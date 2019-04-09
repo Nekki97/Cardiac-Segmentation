@@ -80,21 +80,34 @@ def get_marked_imgs(images, masks):
     return marked_images
 
 
-def get_imgs_labels(patient):
-    img_paths, labels = get_paths_labels(patient, 'img')
+def get_imgs_labels(patient,type):
+    img_paths, labels = get_paths_labels(patient, type)
     images = crop_imgs(read_pgm_paths(img_paths))
     return images, labels
 
 
 def get_marked_imgs_labels(patient, mask):
-    images, labels = get_imgs_labels(patient)
-    mask_paths, mask_labels = get_paths_labels(patient, mask)
-    masks = crop_imgs(read_pgm_paths(mask_paths))
+    images, labels = get_imgs_labels(patient,'img')
+    masks, labels = get_imgs_labels(patient, mask)
     marked_images = get_marked_imgs(images, masks)
     return marked_images, labels
 
 
-imgs, labels = get_marked_imgs_labels(3, 'mask2')
+def get_all_imgs_labels(type, marked):
+    all_imgs = []
+    all_labels = []
+    for i in range(1,19):
+        if type == 'img' and marked == False:
+            images, labels = get_imgs_labels(i,'img')
+        elif marked == True:
+            images, labels = get_marked_imgs_labels(i,type)
+        for j in range(len(images)):
+            all_imgs.append(images[j])
+            all_labels.append(labels[j])
+    return all_imgs, all_labels
+
+
+imgs, labels = get_marked_imgs_labels(2,'mask2')
 show_imgs(imgs)
 
 
