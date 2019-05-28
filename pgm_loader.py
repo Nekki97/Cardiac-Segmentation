@@ -6,6 +6,8 @@ from numpy.core._multiarray_umath import ndarray
 from skimage import segmentation as seg
 from skimage import color
 from PIL import Image
+from scipy import ndimage as nd
+
 
 start_x = 4
 end_x = 100
@@ -32,15 +34,10 @@ def read_pgm(filename, byteorder='>'):
                             ).reshape((int(height), int(width)))
 
 
-def get_labelled_img_paths(patient, type):
+def get_labelled_img_paths(patient):
     if patient<10:
         patient = '0' + str(patient)
-    if type == 'train':
-        path = 'data/train/Pat' + str(patient)
-    if type == 'test':
-        path = 'data/test/Pat' + str(patient)
-    if type == 'val':
-        path = 'data/validation/Pat' + str(patient)
+    path = 'data/all_data/Pat' + str(patient)
     filepaths = []
     labels = []
     for dirName, subdirList, fileList in os.walk(path):
@@ -51,15 +48,10 @@ def get_labelled_img_paths(patient, type):
     return filepaths, labels
 
 
-def get_labelled_mask_paths(patient, type):
+def get_labelled_mask_paths(patient):
     if patient < 10:
         patient = '0' + str(patient)
-    if type == 'train':
-        path = 'data/train/Pat' + str(patient)
-    if type == 'test':
-        path = 'data/test/Pat' + str(patient)
-    if type == 'val':
-        path = 'data/validation/Pat' + str(patient)
+    path = 'data/all_data/Pat' + str(patient)
     outerpaths = []
     innerpaths = []
     outerlabels = []
@@ -93,7 +85,7 @@ def crop_imgs(images,startx,endx,starty,endy):
 def normalize(images):
     norm_images = []
     for image in images:
-        norm_image = np.clip(image,None,np.percentile(image,98))
+        norm_image = np.clip(image,None,np.percentile(image,99))
         norm_image = norm_image - np.amin(norm_image)
         norm_image = norm_image / np.amax(norm_image)
         norm_images.append(norm_image)
@@ -115,15 +107,15 @@ def check_labels(labels1, labels2):
         assert labels2[i].endswith(str(i+1))
 
 
-def get_labelled_imgs(patient, type):
-    img_paths, img_labels = get_labelled_img_paths(patient, type)
+def get_labelled_imgs(patient):
+    img_paths, img_labels = get_labelled_img_paths(patient)
     images = crop_imgs(read_pgm_paths(img_paths),start_x,end_x,start_y,end_y)
     return images, img_labels
 
 
-def get_labelled_masks(patient, type):
+def get_labelled_masks(patient):
     masks = []
-    inner_mask_paths, outer_mask_paths, inner_mask_labels, outer_mask_labels = get_labelled_mask_paths(patient, type)
+    inner_mask_paths, outer_mask_paths, inner_mask_labels, outer_mask_labels = get_labelled_mask_paths(patient)
     check_labels(inner_mask_labels, outer_mask_labels)
     inner_masks = crop_imgs(read_pgm_paths(inner_mask_paths),start_x,end_x,start_y,end_y)
     outer_masks = crop_imgs(read_pgm_paths(outer_mask_paths),start_x,end_x,start_y,end_y)
@@ -142,13 +134,12 @@ def get_segm_imgs(images, masks):
 
 #TODO: center all images with function using center of mass (Hendrik)
 
-
-def get_data(type):
+def get_data():
     all_norm_imgs = []
     all_norm_masks = []
     for patient in range(1, 19):
-        imgs, img_labels = get_labelled_imgs(patient, type)
-        masks, inner_mask_labels, outer_mask_labels = get_labelled_masks(patient, type)
+        imgs, img_labels = get_labelled_imgs(patient)
+        masks, inner_mask_labels, outer_mask_labels = get_labelled_masks(patient)
         check_labels(img_labels, inner_mask_labels)
         norm_imgs = normalize(imgs)
         norm_masks = normalize(masks)
@@ -156,14 +147,55 @@ def get_data(type):
             all_norm_imgs.append(norm_img)
         for norm_mask in norm_masks:
             all_norm_masks.append(norm_mask)
-    return (all_norm_imgs, all_norm_masks)
+    return all_norm_imgs, all_norm_masks
 
-def visualize(images, masks, together):
+
+def scale():
     return None
 
 
-#patient = 3
-#images, img_labels = get_labelled_imgs(patient, 'train')
-#masks, inner_mask_labels, outer_mask_labels = get_labelled_masks(patient, 'train')
-#norm_images = normalize(images)
-#show_imgs(norm_images)
+def find_center_of_mass(masks):
+    coms = []
+    for i in range(masks.shape[0]):
+        coms.append(nd.measurements.center_of_mass(masks[i]))
+    coms = np.array(coms)
+    print(str(coms.shape) + " Coms shape")
+    return coms
+
+
+def crop_images(cropper_size, center_of_masses, data):
+    """
+    :param cropper_size:
+    :param center_of_masses:
+    :param data:
+    :return: returns np.array of cropped images
+    """
+    cropped_data = []
+    counter = 0
+
+    temp = np.empty((data.shape[0], 2*cropper_size, 2*cropper_size))
+    for i in range(data.shape[0]):
+
+        center_i = int(center_of_masses[i][0])
+        center_j = int(center_of_masses[i][1])
+
+        if center_j - cropper_size > 0 and center_i - cropper_size > 0:
+
+        # print('center_i - cropper_size', center_i - cropper_size)
+        # print('center_j - cropper_size', center_j - cropper_size)
+
+            temp[i] = data[i,:][center_i - cropper_size: center_i + cropper_size, center_j - cropper_size: center_j + cropper_size]
+
+            # imageio.imwrite('visualisation/data/while_cropping/' + str(counter) + 'label' + '.png', temp[i,:,:])
+            counter = counter + 1
+        else:
+            padded = np.pad(data[i,:], ((cropper_size,cropper_size),(cropper_size,cropper_size)), 'constant')
+
+            temp[i] = padded[center_i + 64 - cropper_size: center_i + 64 + cropper_size, center_j + 64 - cropper_size: center_j + 64 + cropper_size]
+
+    cropped_data.append(temp)
+    cropped_data = np.array(cropped_data)
+    cropped_data = np.moveaxis(cropped_data, 0, 3)
+    print(str(cropped_data.shape) + " cropped data shape")
+
+    return cropped_data
