@@ -57,11 +57,11 @@ for layers in layers_arr:
             os.makedirs(path + '/' + whichmodel)
         if not os.path.exists(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split'):
             os.makedirs(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split')
-        if not os.path.exists(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers * 4) + 'layers'):
-            os.makedirs(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers * 4) + 'layers')
-        if not os.path.exists(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers * 4) + 'layers/checkpoints'):
-            os.makedirs(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers * 4) + 'layers/checkpoints')
-        save_dir = path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers * 4) + 'layers'
+        if not os.path.exists(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers'):
+            os.makedirs(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers')
+        if not os.path.exists(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers/checkpoints'):
+            os.makedirs(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers/checkpoints')
+        save_dir = path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers'
 
         model = param_unet(input_size, filters, layers, dropout_rate)
         model_checkpoint = ModelCheckpoint(save_dir + '/checkpoints/unet{epoch:02d}.hdf5', monitor='loss',verbose=0, save_best_only=True)
