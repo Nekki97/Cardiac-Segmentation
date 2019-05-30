@@ -4,6 +4,7 @@ import random
 import imageio
 from sklearn import model_selection
 
+
 def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folder, name, bunch_size, rows, percentage, normalized = False):
     amount = int(img_data.shape[0] * percentage)
     ind = random.sample(range(img_data.shape[0]), amount)
@@ -121,29 +122,36 @@ def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_si
     print("******Finished visualising " + str(amount) + " images******")
 
 
-
-def get_split(images, masks, split):
-    # split in form of (0.2,0.2)
-
-    train_val_images, test_images, train_val_masks, test_masks = \
-            model_selection.train_test_split(images, masks, test_size=split[0])
-
-    train_images, val_images, train_masks, val_masks = \
-            model_selection.train_test_split(train_val_images, train_val_masks, test_size=split[1])
-
-    return train_images, train_masks, val_images, val_masks, test_images, test_masks
-
-
-def get_splits(images, masks,splits):
+def get_splits(images, masks, splits, seed):
     # split in form of {1:(0.2, 0.2), 2:(0.3, 0.4)}
     # return: {split1: {train_images_split1: (100,96,96), train_masks_split1: ... }, split2: {}} for every split
+
+    def get_split(images, masks, split, seed):
+        # split in form of (0.2,0.2)
+        test_amount = int(images.shape[0]*split[0])
+        val_amount = int(images.shape[0]*split[1])
+        train_amount = images.shape[0] - test_amount - val_amount
+        print("******************************************")
+        print("TRAINING DATA: " + str(train_amount) + " images")
+        print("VALIDATION DATA: " + str(val_amount) + " images")
+        print("TEST DATA: " + str(test_amount) + " images")
+        print("******************************************")
+
+        train_val_images, test_images, train_val_masks, test_masks = \
+            model_selection.train_test_split(images, masks, test_size=test_amount, random_state=seed)
+
+        train_images, val_images, train_masks, val_masks = \
+            model_selection.train_test_split(train_val_images, train_val_masks, test_size=val_amount, random_state=seed)
+
+        return train_images, train_masks, val_images, val_masks, test_images, test_masks
+
     split_dicts = {}
     j = 0
     for split in splits.values():
         split_data = {}
         labels = ["train_images", "train_masks", "val_images", "val_masks",
                 "test_images", "test_masks"]
-        train_images, train_masks, val_images, val_masks, test_images, test_masks = get_split(images, masks, split)
+        train_images, train_masks, val_images, val_masks, test_images, test_masks = get_split(images, masks, split, seed)
         data = [train_images, train_masks, val_images, val_masks, test_images, test_masks]
         for i in range(len(data)):
             split_data[labels[i]] = data[i]
