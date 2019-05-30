@@ -5,19 +5,21 @@ import scoring_utils as su
 #import torch
 from sklearn.metrics import roc_curve, auc
 
-epochs = 2
+epochs = 1
 batch_size = 32
 filters = 8
-# max 5 layers with 96x96
 dropout_rate = 0.5
 whichmodel = "param_unet"
+seed = 262626
 
 cropper_size = 64
 
 all_results = []
 
-layers_arr = [2, 3, 4, 5, 6] # 1 layer = 2 Convolutions, 1 MaxPooling, 1 Dropout (technically 4 layers)
-splits = {1:(0.2, 0.2), 2:(0.2, 0.4), 3:(0.4, 0.4)}
+#layers_arr = [2, 3, 4, 5, 6] # 1 layer = 2 Convolutions, 1 MaxPooling, 1 Dropout (technically 4 layers)
+layers_arr = [2]
+#splits = {1:(0.2, 0.2), 2:(0.2, 0.4), 3:(0.4, 0.4)}
+splits = {1:(0.2, 0.2)}
 
 (images, masks) = pgm.get_data()
 images = np.array(images)
@@ -27,7 +29,7 @@ coms = pgm.find_center_of_mass(masks)
 images = pgm.crop_images(cropper_size, coms, images)
 masks = pgm.crop_images(cropper_size, coms, masks)
 
-data = get_splits(images, masks, splits)
+data = get_splits(images, masks, splits, seed)
 
 for layers in layers_arr:
     for split_number in range(len(splits)):
@@ -50,24 +52,30 @@ for layers in layers_arr:
 
         train_val_test_split = splits.get(split_number + 1)
 
+        index = 1
         path = "results"
         if not os.path.exists(path):
             os.makedirs(path)
-        if not os.path.exists(path + '/' + whichmodel):
-            os.makedirs(path + '/' + whichmodel)
-        if not os.path.exists(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split'):
-            os.makedirs(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split')
-        if not os.path.exists(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers'):
-            os.makedirs(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers')
-        if not os.path.exists(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers/checkpoints'):
-            os.makedirs(path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers/checkpoints')
-        save_dir = path + '/' + whichmodel + '/' + str(train_val_test_split) + 'train_val_test_split/' + str(layers) + 'layers'
+        path += '/' + whichmodel
+        if not os.path.exists(path):
+            os.makedirs(path)
+        path += '/' + str(train_val_test_split) + '_split'
+        if not os.path.exists(path):
+            os.makedirs(path)
+        path += '/' + str(layers) + '_layers_#'
+        if not os.path.exists(path + str(index)):
+            os.makedirs(path + str(index))
+            save_dir = path + str(index)
+        else:
+            while os.path.exists(path + str(index)):
+                index += 1
+            save_dir = path + str(index)
+        if not os.path.exists(save_dir + '/checkpoints'):
+            os.makedirs(save_dir + '/checkpoints')
 
         model = param_unet(input_size, filters, layers, dropout_rate)
         model_checkpoint = ModelCheckpoint(save_dir + '/checkpoints/unet{epoch:02d}.hdf5', monitor='loss',verbose=0, save_best_only=True)
         history = model.fit(train_images, train_masks, epochs=epochs, batch_size=batch_size, validation_data=(val_images, val_masks), verbose=1, shuffle=True, callbacks=[model_checkpoint])
-
-        #TODO wie hendrik jede epoche oder jede 10te epoche ein bild speichern
 
         results = model.predict(test_images, verbose=1)
         np.save("data" ,results)
