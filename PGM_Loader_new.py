@@ -132,17 +132,28 @@ def get_segm_imgs(images, masks):
         segm_images.append(segm_image)
     return segm_images
 
-#TODO: center all images with function using center of mass (Hendrik)
 
-def get_data():
+def get_data(cropper_size):
     all_norm_imgs = []
     all_norm_masks = []
+
     for patient in range(1, 19):
+        #Get images
         imgs, img_labels = get_labelled_imgs(patient)
         masks, inner_mask_labels, outer_mask_labels = get_labelled_masks(patient)
         check_labels(img_labels, inner_mask_labels)
-        norm_imgs = normalize(imgs)
-        norm_masks = normalize(masks)
+        #Scale images up to 2mm per pixel
+        scaled_imgs, scaled_masks = scale(imgs, masks, patient)
+        scaled_masks = np.array(scaled_masks,float)
+        scaled_imgs = np.array(scaled_imgs, float)
+        #Pad images up to 128x128
+        coms = find_center_of_mass(scaled_masks)
+        cropped_imgs = crop_images(cropper_size, coms, scaled_imgs)
+        cropped_masks = crop_images(cropper_size, coms, scaled_masks)
+        #Normalize images to [0, 1]
+        norm_imgs = normalize(cropped_imgs)
+        norm_masks = normalize(cropped_masks)
+
         for norm_img in norm_imgs:
             all_norm_imgs.append(norm_img)
         for norm_mask in norm_masks:
@@ -150,8 +161,24 @@ def get_data():
     return all_norm_imgs, all_norm_masks
 
 
-def scale():
-    return None
+def scale(images, masks, patient):
+    # scale every image up to 2mm per pixel
+    if patient < 10:
+        patient = '0' + str(patient)
+    path = 'data/all_data/Pat' + str(patient) + '/info.txt'
+    file = open(path)
+    file.readline()
+    file.readline()
+    resolution = float(file.readline()[0:4])
+    multiplier = 2 / resolution
+    scaled_images = []
+    scaled_masks = []
+    for image, mask in zip(images, masks):
+        scaled_images.append(nd.zoom(image, multiplier))
+        print(nd.zoom(image, multiplier).shape)
+        print(nd.zoom(mask, multiplier).shape)
+        scaled_masks.append(nd.zoom(mask, multiplier))
+    return scaled_images, scaled_masks
 
 
 def find_center_of_mass(masks):
@@ -159,7 +186,6 @@ def find_center_of_mass(masks):
     for i in range(masks.shape[0]):
         coms.append(nd.measurements.center_of_mass(masks[i]))
     coms = np.array(coms)
-    print(str(coms.shape) + " Coms shape")
     return coms
 
 
