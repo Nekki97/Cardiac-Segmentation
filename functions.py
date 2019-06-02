@@ -1,10 +1,10 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import random
-import imageio
+#import imageio
 from sklearn import model_selection
 
-
+'''
 def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folder, name, bunch_size, rows, percentage, normalized = False):
     amount = int(img_data.shape[0] * percentage)
     ind = random.sample(range(img_data.shape[0]), amount)
@@ -120,7 +120,7 @@ def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_si
             full_image = np.vstack((full_image, full_row))
         imageio.imwrite(save_folder + "/" + name + '%d_%d.png' % (indx_start,indx_end-1), full_image)
     print("******Finished visualising " + str(amount) + " images******")
-
+'''
 
 def get_split(images, masks, split, seed):
     # split in form of (0.2,0.2)
