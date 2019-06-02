@@ -172,8 +172,8 @@ def scale(images, masks, patient):
     scaled_masks = []
     for image, mask in zip(images, masks):
         scaled_images.append(nd.zoom(image, multiplier))
-        print(nd.zoom(image, multiplier).shape)
-        print(nd.zoom(mask, multiplier).shape)
+        #print(nd.zoom(image, multiplier).shape)
+        #print(nd.zoom(mask, multiplier).shape)
         scaled_masks.append(nd.zoom(mask, multiplier))
     return scaled_images, scaled_masks
 
@@ -219,6 +219,6 @@ def crop_images(cropper_size, center_of_masses, data):
     cropped_data.append(temp)
     cropped_data = np.array(cropped_data)
     cropped_data = np.moveaxis(cropped_data, 0, 3)
-    print(str(cropped_data.shape) + " cropped data shape")
+    #print(str(cropped_data.shape) + " cropped data shape")
 
     return cropped_data
