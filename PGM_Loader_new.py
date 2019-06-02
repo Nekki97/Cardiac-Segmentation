@@ -2,10 +2,7 @@ import re
 import os
 import numpy as np
 from matplotlib import pyplot as plt
-from numpy.core._multiarray_umath import ndarray
 from skimage import segmentation as seg
-from skimage import color
-from PIL import Image
 from scipy import ndimage as nd
 
 
