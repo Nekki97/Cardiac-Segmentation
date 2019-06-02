@@ -79,6 +79,7 @@ for layers in layers_arr:
             results = model.predict(test_images, verbose=1)
             np.save("data" ,results)
 
+            '''
             save_datavisualisation2(train_images, train_masks, save_dir, "train", 12, 3, 0.2, True)
             save_datavisualisation2(test_images, test_masks, save_dir, "test", 12, 3, 0.2, True)
             save_datavisualisation2(val_images, val_masks, save_dir, "val", 12, 3, 0.2, True)
@@ -89,6 +90,7 @@ for layers in layers_arr:
             plt.show()
             plt.imshow(results[0][:,:,0], cmap='gray')
             plt.show()
+            '''
 
             # Plot training & validation accuracy values
             plt.plot(history.history['acc'])
@@ -98,8 +100,9 @@ for layers in layers_arr:
             plt.xlabel('Epoch')
             plt.legend(['Train', 'Test'], loc='upper left')
             plt.savefig(os.path.join(save_dir, str(epochs) +'epochs_accuracy_values.png'))
-            plt.show()
-
+            #plt.show()
+            plt.close()
+            
             # Plot training & validation loss values
             plt.plot(history.history['loss'])
             plt.plot(history.history['val_loss'])
@@ -108,8 +111,9 @@ for layers in layers_arr:
             plt.xlabel('Epoch')
             plt.legend(['Train', 'Test'], loc='upper left')
             plt.savefig(os.path.join(save_dir, str(epochs) +'epochs_loss_values.png'))
-            plt.show()
-
+            #plt.show()
+            plt.close()
+            
             mask_prediction = []
             for i in test_images:
                 i = np.expand_dims(i, 0)
@@ -148,7 +152,7 @@ for layers in layers_arr:
             print('DICE SCORE: ' + str(median_dice_score))
 
             output = np.expand_dims(output, -1)
-            save_datavisualisation3(test_images, test_masks, output, save_dir, "prediction", 12, 2, 0.4, True)
+            #save_datavisualisation3(test_images, test_masks, output, save_dir, "prediction", 12, 2, 0.4, True)
 
             all_results.append(results)
 
