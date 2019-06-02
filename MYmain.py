@@ -1,5 +1,5 @@
 from MYmodel import *
-import PGM_Loader_new as pgm
+from PGM_Loader_new import *
 from functions import *
 import scoring_utils as su
 #import torch
