@@ -3,7 +3,7 @@ import PGM_Loader_new as pgm
 from functions import *
 import scoring_utils as su
 #import torch
-from sklearn.metrics import roc_curve, auc
+#from sklearn.metrics import roc_curve, auc
 
 epochs = 1
 batch_size = 32
