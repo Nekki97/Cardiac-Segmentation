@@ -138,7 +138,7 @@ for seed in seeds:
                     "unet_layers": layers,
                     "data_perc": data_percs[perc_index],
                     "filters": filters,
-                    "input_size": input_size
+                    "input_size": input_size,
                     "seed": seed
                 }
                 dice = []
