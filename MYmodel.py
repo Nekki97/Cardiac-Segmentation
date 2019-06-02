@@ -1,16 +1,6 @@
-import numpy as np
-import os
-import skimage.io as io
-import skimage.transform as trans
-import numpy as np
-import random
 from keras.models import *
 from keras.layers import *
 from keras.optimizers import *
-from keras.utils import plot_model
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler
-from keras import backend as keras
-import pydot_ng as pydot
 
 def param_unet(input_size, filters, layers, dropout_rate, pretrained_weights=None):
     inputs = Input(input_size)
