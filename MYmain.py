@@ -1,4 +1,3 @@
-import keras
 from keras.models import *
 from keras.callbacks import ModelCheckpoint
 from MYmodel import *
