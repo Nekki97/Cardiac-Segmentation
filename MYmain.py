@@ -77,8 +77,8 @@ for layers in layers_arr:
                 os.makedirs(save_dir + '/checkpoints')
 
             model = param_unet(input_size, filters, layers, dropout_rate)
-            model_checkpoint = ModelCheckpoint(save_dir + '/checkpoints/unet{epoch:02d}.hdf5', monitor='loss',verbose=0, save_best_only=True)
-            history = model.fit(train_images, train_masks, epochs=epochs, batch_size=batch_size, validation_data=(val_images, val_masks), verbose=1, shuffle=True, callbacks=[model_checkpoint])
+            #model_checkpoint = ModelCheckpoint(save_dir + '/checkpoints/unet{epoch:02d}.hdf5', monitor='loss',verbose=0, save_best_only=True)
+            history = model.fit(train_images, train_masks, epochs=epochs, batch_size=batch_size, validation_data=(val_images, val_masks), verbose=1, shuffle=True)#, callbacks=[model_checkpoint])
 
             results = model.predict(test_images, verbose=1)
             np.save("data" ,results)
