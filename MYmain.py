@@ -149,6 +149,8 @@ for layers in layers_arr:
                     mask_prediction = np.array(mask_prediction)
                     mask_prediction = np.squeeze(mask_prediction, 1)
                     np.save(os.path.join(save_dir, str(epochs) + 'epochs_mask_prediction'), mask_prediction)
+                    np.save(os.path.join(save_dir, str(epochs) + 'test_images'), test_images)
+                    np.save(os.path.join(save_dir, str(epochs) + 'test_masks'), test_masks)
 
                     results = {
                         "epochs": epochs,
