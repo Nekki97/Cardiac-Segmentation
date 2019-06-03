@@ -33,7 +33,7 @@ def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_
 
     model = Model(input=inputs, output=conv_final)
 
-    if loss_name == 'binary_crossentropy':
+    if loss_name == 'binary crossentropy':
         model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
     if loss_name == 'dice':
         model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=['accuracy'])
