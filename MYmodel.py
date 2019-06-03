@@ -1,8 +1,9 @@
 from keras.models import *
 from keras.layers import *
 from keras.optimizers import *
+from functions import *
 
-def param_unet(input_size, filters, layers, dropout_rate, pretrained_weights=None):
+def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_weights=None):
     inputs = Input(input_size)
     print('Inputs in UNet Shape: ' + str(inputs.shape))
     conv_down = np.empty(layers, dtype=object)
@@ -32,7 +33,10 @@ def param_unet(input_size, filters, layers, dropout_rate, pretrained_weights=Non
 
     model = Model(input=inputs, output=conv_final)
 
-    model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
+    if loss_name == 'binary_crossentropy':
+        model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
+    if loss_name == 'dice':
+        model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=['accuracy'])
 
     model.summary()
 
@@ -43,8 +47,8 @@ def param_unet(input_size, filters, layers, dropout_rate, pretrained_weights=Non
 
 if __name__ == '__main__':      #only gets called if functions.py is run
 
-    model = param_unet((96,96,1), 64, 6, 0.5)
+    model = param_unet((128,128,1), 64, 6, 0.5)
 
     from keras.utils import plot_model
 
-    plot_model(model, to_file='param_unet.svg', show_shapes=True)
+    plot_model(model, to_file='UNET-Models/param_unet.svg', show_shapes=True)
