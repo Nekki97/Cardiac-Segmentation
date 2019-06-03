@@ -4,6 +4,7 @@ from MYmodel import param_unet
 import PGM_Loader_new as pgm
 from functions import *
 import scoring_utils as su
+import os
 from matplotlib import pyplot as plt
 # import Nii_Loader as nii
 # import torch
