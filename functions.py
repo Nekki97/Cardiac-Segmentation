@@ -1,11 +1,11 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import random
 #import imageio
 from sklearn import model_selection
 
 '''
-def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folder, name, bunch_size, rows, percentage, normalized = False):
+def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folder, name, bunch_size, rows,
+                            percentage, normalized=False):
     amount = int(img_data.shape[0] * percentage)
     ind = random.sample(range(img_data.shape[0]), amount)
     img_data = img_data[ind]
@@ -22,8 +22,10 @@ def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folde
         while len(i_bunch) < bunch_size * rows and len(i_bunch) < img_data.shape[0]:
             while len(j_bunch) < bunch_size * rows and len(j_bunch) < myocar_labels.shape[0]:
                 while len(k_bunch) < bunch_size * rows and len(k_bunch) < predited_labels.shape[0]:
-                    for i, j, k in zip(img_data[indx_start:indx_end, :, :, 0], myocar_labels[indx_start:indx_end, :, :, 0], predited_labels[indx_start:indx_end, :, :, 0]):
-                        if normalized == True:
+                    for i, j, k in zip(img_data[indx_start:indx_end, :, :, 0],
+                                       myocar_labels[indx_start:indx_end, :, :, 0],
+                                       predited_labels[indx_start:indx_end, :, :, 0]):
+                        if normalized:
                             i = i * 255
                             j = j * 255
                             k = k * 255
@@ -40,7 +42,7 @@ def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folde
                 j_row = j_bunch[bunch_size * row_number, :, :]
                 k_row = k_bunch[bunch_size * row_number, :, :]
                 remaining_imgs = max(remaining_imgs - 1, 0)
-                for index in range(bunch_size * row_number + 1,bunch_size * (row_number + 1)):
+                for index in range(bunch_size * row_number + 1, bunch_size * (row_number + 1)):
                     if remaining_imgs > 0:
                         image = i_bunch[index, :, :]
                         myocar_label = j_bunch[index, :, :]
@@ -50,7 +52,7 @@ def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folde
                         y = img_data.shape[2]
                         image = np.zeros((x, y))
                         myocar_label = np.zeros((x, y))
-                        predicted_label = np.zeros((x,y))
+                        predicted_label = np.zeros((x, y))
                     i_row = np.hstack((i_row, image))
                     j_row = np.hstack((j_row, myocar_label))
                     k_row = np.hstack((k_row, predicted_label))
@@ -69,7 +71,8 @@ def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folde
     print("******Finished visualising " + str(amount) + " images******")
 
 
-def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_size, rows, percentage, normalized = False):
+def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_size, rows,
+                            percentage, normalized=False):
     amount = int(img_data.shape[0] * percentage)
     ind = random.sample(range(img_data.shape[0]), amount)
     img_data = img_data[ind]
@@ -83,8 +86,8 @@ def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_si
         j_bunch = []
         while len(i_bunch) < bunch_size * rows and len(i_bunch) <= img_data.shape[0]:
             while len(j_bunch) < bunch_size * rows and len(j_bunch) <= myocar_labels.shape[0]:
-                for i, j in zip(img_data[indx_start:indx_end,:,:,0], myocar_labels[indx_start:indx_end,:,:,0]):
-                    if normalized == True:
+                for i, j in zip(img_data[indx_start:indx_end, :, :, 0], myocar_labels[indx_start:indx_end, :, :, 0]):
+                    if normalized:
                         i = i * 255
                         j = j * 255
                     j_bunch.append(j)
@@ -104,8 +107,8 @@ def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_si
                     else:
                         x = img_data.shape[1]
                         y = img_data.shape[2]
-                        image = np.zeros((x,y))
-                        label = np.zeros((x,y))
+                        image = np.zeros((x, y))
+                        label = np.zeros((x, y))
                     i_row = np.hstack((i_row, image))
                     j_row = np.hstack((j_row, label))
                     remaining_imgs = max(remaining_imgs - 1, 0)
@@ -118,9 +121,10 @@ def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_si
         full_image = full_rows[0]
         for full_row in full_rows[1:full_rows.shape[0]]:
             full_image = np.vstack((full_image, full_row))
-        imageio.imwrite(save_folder + "/" + name + '%d_%d.png' % (indx_start,indx_end-1), full_image)
+        imageio.imwrite(save_folder + "/" + name + '%d_%d.png' % (indx_start, indx_end-1), full_image)
     print("******Finished visualising " + str(amount) + " images******")
 '''
+
 
 def get_split(images, masks, split, seed):
     # split in form of (0.2,0.2)
@@ -134,10 +138,10 @@ def get_split(images, masks, split, seed):
     print("******************************************")
 
     train_val_images, test_images, train_val_masks, test_masks = \
-            model_selection.train_test_split(images, masks, test_size=test_amount, random_state=seed)
+        model_selection.train_test_split(images, masks, test_size=test_amount, random_state=seed)
 
     train_images, val_images, train_masks, val_masks = \
-            model_selection.train_test_split(train_val_images, train_val_masks, test_size=val_amount, random_state=seed)
+        model_selection.train_test_split(train_val_images, train_val_masks, test_size=val_amount, random_state=seed)
 
     return train_images, train_masks, val_images, val_masks, test_images, test_masks
 
@@ -151,8 +155,9 @@ def get_splits(images, masks, splits, seed):
     for split in splits.values():
         split_data = {}
         labels = ["train_images", "train_masks", "val_images", "val_masks",
-                "test_images", "test_masks"]
-        train_images, train_masks, val_images, val_masks, test_images, test_masks = get_split(images, masks, split, seed)
+                  "test_images", "test_masks"]
+        train_images, train_masks, val_images, val_masks, test_images, test_masks = \
+            get_split(images, masks, split, seed)
         data = [train_images, train_masks, val_images, val_masks, test_images, test_masks]
         for i in range(len(data)):
             split_data[labels[i]] = data[i]
@@ -162,6 +167,7 @@ def get_splits(images, masks, splits, seed):
 
 
 def get_datasets(data, split_number):
+
     index = "Split#"+str(split_number)
     train_images = data[index].get("train_images")
     train_masks = data[index].get("train_masks")
@@ -189,3 +195,19 @@ def getalldata(images, masks, data_percs, splits, seed):
         split_dicts[str(data_percs[j]) + "Perc"] = get_splits(images_dict[j], masks_dict[j], splits, seed)
 
     return split_dicts
+
+def getdicescore(result, reference):
+    result = np.atleast_1d(result.astype(np.bool))
+    reference = np.atleast_1d(reference.astype(np.bool))
+
+    intersection = np.count_nonzero(result & reference)
+
+    size_i1 = np.count_nonzero(result)
+    size_i2 = np.count_nonzero(reference)
+
+    try:
+        dc = 2. * intersection / float(size_i1 + size_i2)
+    except ZeroDivisionError:
+        dc = 0.0
+
+    return dc
