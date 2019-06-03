@@ -20,8 +20,8 @@ splits = {1: (0.3, 0.1)}
 epochs = 100
 batch_size = 32 # auf 0.75*self ab 5 layers
 seeds = [1, 2]  #[1, 2, 3, 4]
-data_percs = [0.25, 0.5]    # [0.25, 0.5, 0.75, 1]
-layers_arr = [4, 5]    #TODO: einmal nur mit 3 und 6 layers testen  #[2, 3, 4, 5, 6]
+data_percs = [0.75, 1]    # [0.25, 0.5, 0.75, 1]
+layers_arr = [2, 3]    #TODO: einmal nur mit 3 und 6 layers testen  #[2, 3, 4, 5, 6]
 loss_funcs = ['binary crossentropy'] # ['binary crossentropy', 'dice']
 
 #TODO: jobs parallel bei euler/erik abgeben --> dauert nicht so lange
