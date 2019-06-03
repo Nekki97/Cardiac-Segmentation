@@ -10,9 +10,9 @@ from matplotlib import pyplot as plt
 # import torch
 # from sklearn.metrics import roc_curve, auc
 
-epochs = 1
+epochs = 100
 batch_size = 32
-filters = 8
+filters = 64
 dropout_rate = 0.5
 cropper_size = 64 # --> 128x128 after padding
 
