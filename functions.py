@@ -2,6 +2,7 @@ import numpy as np
 import random
 #import imageio
 from sklearn import model_selection
+import keras.backend as K
 
 '''
 def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folder, name, bunch_size, rows,
@@ -128,8 +129,8 @@ def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_si
 
 def get_split(images, masks, split, seed):
     # split in form of (0.2,0.2)
-    test_amount = int(images.shape[0]*split[0])
-    val_amount = int(images.shape[0]*split[1])
+    test_amount = max(int(images.shape[0]*split[0]), 1)
+    val_amount = max(int(images.shape[0]*split[1]), 1)
     train_amount = images.shape[0] - test_amount - val_amount
     print("******************************************")
     print("TRAINING DATA: " + str(train_amount) + " images")
@@ -196,6 +197,7 @@ def getalldata(images, masks, data_percs, splits, seed):
 
     return split_dicts
 
+
 def getdicescore(result, reference):
     result = np.atleast_1d(result.astype(np.bool))
     reference = np.atleast_1d(reference.astype(np.bool))
@@ -211,3 +213,17 @@ def getdicescore(result, reference):
         dc = 0.0
 
     return dc
+
+
+def dice_coef(y_true, y_pred, smooth=1):
+    """
+    Dice = (2*|X & Y|)/ (|X|+ |Y|)
+         =  2*sum(|A*B|)/(sum(A^2)+sum(B^2))
+    ref: https://arxiv.org/pdf/1606.04797v1.pdf
+    """
+    intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
+    return (2. * intersection + smooth) / (K.sum(K.square(y_true),-1) + K.sum(K.square(y_pred),-1) + smooth)
+
+
+def dice_coef_loss(y_true, y_pred):
+    return 1-dice_coef(y_true, y_pred)
