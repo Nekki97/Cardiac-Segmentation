@@ -17,10 +17,10 @@ dropout_rate = 0.5
 cropper_size = 64 # --> 128x128 after padding
 
 whichmodel = "param_unet"
-seeds = [1, 2]
-data_percs = [0.2, 0.3]
-layers_arr = [3, 4]
-splits = {1: (0.2, 0.2)}
+seeds = [1, 2, 3, 4]
+data_percs = [0.3, 0.5, 0.8, 1]
+layers_arr = [3, 5, 6, 7] # 1 layer = 2 Convolutions, 1 MaxPooling, 1 Dropout (technically 4 layers)
+splits = {1: (0.2, 0.2), 2: (0.3, 0.3), 3: (0.2, 0.3), 4: (0.1, 0.1)}
 
 all_results = []
 
