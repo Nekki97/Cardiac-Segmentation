@@ -19,11 +19,11 @@ splits = {1: (0.3, 0.1)}
 
 epochs = 100
 batch_size = 32 # auf 0.75*self ab 5 layers
-seeds = [1, 2]
-data_percs = [0.75, 1] # PERCENTAGE OF PEOPLE (TOTAL DATA)
-layers_arr = [3, 4]
-loss_funcs = ['binary crossentropy']
-patient_percs = [1]
+seeds = [1, 2, 3]
+data_percs = [0.25, 0.5, 0.75, 1] # PERCENTAGE OF PEOPLE (TOTAL DATA)
+layers_arr = [3, 4, 5, 6]
+loss_funcs = ['binary crossentropy', 'dice']
+patient_percs = [0.25, 0.5, 0.75, 1]
 
 #TODO: anfangen plots zu machen mit matplotlib
 
