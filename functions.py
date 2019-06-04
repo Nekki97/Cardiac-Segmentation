@@ -129,14 +129,9 @@ def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_si
 
 def get_split(images, masks, split, seed):
     # split in form of (0.2,0.2)
-    test_amount = max(int(images.shape[0]*split[0]), 1)
-    val_amount = max(int(images.shape[0]*split[1]), 1)
-    train_amount = images.shape[0] - test_amount - val_amount
-    print("******************************************")
-    print("TRAINING DATA: " + str(train_amount) + " images")
-    print("VALIDATION DATA: " + str(val_amount) + " images")
-    print("TEST DATA: " + str(test_amount) + " images")
-    print("******************************************")
+    test_amount = max(int(len(images)*split[0]), 1)
+    val_amount = max(int(len(images)*split[1]), 1)
+    #train_amount = len(images) - test_amount - val_amount
 
     train_val_images, test_images, train_val_masks, test_masks = \
         model_selection.train_test_split(images, masks, test_size=test_amount, random_state=seed)
@@ -159,6 +154,17 @@ def get_splits(images, masks, splits, seed):
                   "test_images", "test_masks"]
         train_images, train_masks, val_images, val_masks, test_images, test_masks = \
             get_split(images, masks, split, seed)
+
+        '''
+        print(train_images[0].shape, "train_image")
+        correctarray(train_images)
+        correctarray(train_masks)
+        correctarray(test_masks)
+        correctarray(test_images)
+        correctarray(val_images)
+        correctarray(val_masks)
+        '''
+
         data = [train_images, train_masks, val_images, val_masks, test_images, test_masks]
         for i in range(len(data)):
             split_data[labels[i]] = data[i]
@@ -176,7 +182,24 @@ def get_datasets(data, split_number):
     val_masks = data[index].get("val_masks")
     test_images = data[index].get("test_images")
     test_masks = data[index].get("test_masks")
-    
+
+    train_images = collectimages(train_images)
+    train_masks = collectimages(train_masks)
+    test_images = collectimages(test_images)
+    test_masks = collectimages(test_masks)
+    val_images = collectimages(val_images)
+    val_masks = collectimages(val_masks)
+
+    train_images = np.array(train_images, dtype=float)
+    test_images = np.array(test_images, dtype=float)
+    val_images = np.array(val_images, dtype=float)
+    train_masks = np.array(train_masks, dtype=float)
+    test_masks = np.array(test_masks, dtype=float)
+    val_masks = np.array(val_masks, dtype=float)
+
+    print(train_images.shape)
+    print(test_images.shape)
+
     return train_images, train_masks, val_images, val_masks, test_images, test_masks
 
 
@@ -185,12 +208,21 @@ def getalldata(images, masks, data_percs, splits, seed):
     masks_dict = {}
     split_dicts = {}
     for i in range(len(data_percs)):
-        assert images.shape[0] == masks.shape[0]
-        amount = int(images.shape[0] * data_percs[i])
+        assert len(images) == len(masks)
+        amount = int(len(images) * data_percs[i])
+        perc = amount/len(images)*100
+        remaining = data_percs[i]*100 - perc
+        if remaining/100*len(images) > 0.5*images[max(amount-1,0)].shape[0]:
+            amount += 1
         random.seed(seed)
-        ind = random.sample(range(images.shape[0]), amount)
-        images_dict[i] = images[ind]
-        masks_dict[i] = masks[ind]
+        ind = random.sample(range(len(images)), amount)
+        temp_imgs = []
+        temp_masks = []
+        for k in range(len(ind)):
+            temp_imgs.append(images[k])
+            temp_masks.append(masks[k])
+        images_dict[i] = temp_imgs
+        masks_dict[i] = temp_masks
 
     for j in range(len(images_dict)):
         split_dicts[str(data_percs[j]) + "Perc"] = get_splits(images_dict[j], masks_dict[j], splits, seed)
@@ -227,3 +259,47 @@ def dice_coef(y_true, y_pred, smooth=1):
 
 def dice_coef_loss(y_true, y_pred):
     return 1-dice_coef(y_true, y_pred)
+
+
+def collectimages(mylist):
+    data = []
+    for patient in range(len(mylist)):
+        for image in range(len(mylist[patient])):
+            data.append((mylist[patient])[image])
+    return data
+
+
+def getpatpercs(images, masks, patperc):
+    new_imgs = []
+    new_masks = []
+    for pat in range(len(images)):
+        temp_imgs = []
+        temp_masks = []
+        for index in range(int(patperc*len(images[pat]))):
+            temp_imgs.append((images[pat])[index])
+            temp_masks.append((masks[pat])[index])
+        new_imgs.append(temp_imgs)
+        new_masks.append(temp_masks)
+    return new_imgs, new_masks
+
+'''
+def correctarray(myarray):
+    min = myarray[0].shape[0]
+    for pat in range(len(myarray)):
+        if myarray[pat].shape[0] < min:
+            min = myarray[pat].shape[0]
+
+    for pat in range(len(myarray)):
+        for j in range(pat):
+            print(pat, j)
+            if j == pat:
+                continue
+            while myarray[j].shape[0] > myarray[pat].shape[0]:
+                myarray[j] = (myarray[j])[0:(myarray[j].shape[0]-1), :, :, :]
+                print("from", myarray[j].shape[0], "to", myarray[j].shape[0]-1)
+            while myarray[j].shape[0] < myarray[pat].shape[0]:
+                myarray[pat] = (myarray[pat])[0:(myarray[pat].shape[0]-1), :, :, :]
+                print("from", myarray[pat].shape[0], "to", myarray[pat].shape[0] - 1)
+        print("Corrected to", myarray[pat].shape[0])
+    return myarray
+    '''
