@@ -197,9 +197,6 @@ def get_datasets(data, split_number):
     test_masks = np.array(test_masks, dtype=float)
     val_masks = np.array(val_masks, dtype=float)
 
-    print(train_images.shape)
-    print(test_images.shape)
-
     return train_images, train_masks, val_images, val_masks, test_images, test_masks
 
 
