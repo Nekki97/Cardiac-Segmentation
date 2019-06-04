@@ -10,7 +10,6 @@ start_x = 4
 end_x = 100
 start_y = 4
 end_y = 100
-#patient = 2
 
 
 def read_pgm(filename, byteorder='>'):
@@ -34,7 +33,7 @@ def read_pgm(filename, byteorder='>'):
 def get_labelled_img_paths(patient):
     if patient<10:
         patient = '0' + str(patient)
-    path = 'data/all_data/Pat' + str(patient)
+    path = 'pgm_data/all_data/Pat' + str(patient)
     filepaths = []
     labels = []
     for dirName, subdirList, fileList in os.walk(path):
@@ -48,7 +47,7 @@ def get_labelled_img_paths(patient):
 def get_labelled_mask_paths(patient):
     if patient < 10:
         patient = '0' + str(patient)
-    path = 'data/all_data/Pat' + str(patient)
+    path = 'pgm_data/all_data/Pat' + str(patient)
     outerpaths = []
     innerpaths = []
     outerlabels = []
@@ -79,6 +78,7 @@ def crop_imgs(images,startx,endx,starty,endy):
         cropped_imgs.append(cropped_image)
     return cropped_imgs
 
+
 def normalize(images):
     norm_images = []
     for image in images:
@@ -88,10 +88,9 @@ def normalize(images):
         norm_images.append(norm_image)
     return norm_images
 
+
 def show_imgs(images):
-    #print("      MRI Image       |     Inner Mask        |     Outer Mask      ")
     for i in range(len(images)):
-        #print(labels[0][i] + ' | ' + labels[1][i] +  ' | ' + labels[2][i])
         plt.axes().set_aspect('equal', 'datalim')
         plt.imshow(images[i], plt.cm.gray)
         plt.show()
@@ -141,7 +140,7 @@ def get_data(cropper_size):
         check_labels(img_labels, inner_mask_labels)
         #Scale images up to 2mm per pixel
         scaled_imgs, scaled_masks = scale(imgs, masks, patient)
-        scaled_masks = np.array(scaled_masks,float)
+        scaled_masks = np.array(scaled_masks, float)
         scaled_imgs = np.array(scaled_imgs, float)
         #Pad images up to 128x128
         coms = find_center_of_mass(scaled_masks)
@@ -151,10 +150,9 @@ def get_data(cropper_size):
         norm_imgs = normalize(cropped_imgs)
         norm_masks = normalize(cropped_masks)
 
-        for norm_img in norm_imgs:
-            all_norm_imgs.append(norm_img)
-        for norm_mask in norm_masks:
-            all_norm_masks.append(norm_mask)
+        all_norm_imgs.append(norm_imgs)
+        all_norm_masks.append(norm_masks)
+
     return all_norm_imgs, all_norm_masks
 
 
@@ -162,7 +160,7 @@ def scale(images, masks, patient):
     # scale every image up to 2mm per pixel
     if patient < 10:
         patient = '0' + str(patient)
-    path = 'data/all_data/Pat' + str(patient) + '/info.txt'
+    path = 'pgm_data/all_data/Pat' + str(patient) + '/info.txt'
     file = open(path)
     file.readline()
     file.readline()
@@ -172,8 +170,6 @@ def scale(images, masks, patient):
     scaled_masks = []
     for image, mask in zip(images, masks):
         scaled_images.append(nd.zoom(image, multiplier))
-        #print(nd.zoom(image, multiplier).shape)
-        #print(nd.zoom(mask, multiplier).shape)
         scaled_masks.append(nd.zoom(mask, multiplier))
     return scaled_images, scaled_masks
 
@@ -207,14 +203,16 @@ def crop_images(cropper_size, center_of_masses, data):
         # print('center_i - cropper_size', center_i - cropper_size)
         # print('center_j - cropper_size', center_j - cropper_size)
 
-            temp[i] = data[i,:][center_i - cropper_size: center_i + cropper_size, center_j - cropper_size: center_j + cropper_size]
+            temp[i] = data[i,:][center_i - cropper_size: center_i + cropper_size,
+                                center_j - cropper_size: center_j + cropper_size]
 
             # imageio.imwrite('visualisation/data/while_cropping/' + str(counter) + 'label' + '.png', temp[i,:,:])
             counter = counter + 1
         else:
             padded = np.pad(data[i,:], ((cropper_size,cropper_size),(cropper_size,cropper_size)), 'constant')
 
-            temp[i] = padded[center_i + 64 - cropper_size: center_i + 64 + cropper_size, center_j + 64 - cropper_size: center_j + 64 + cropper_size]
+            temp[i] = padded[center_i + 64 - cropper_size: center_i + 64 + cropper_size,
+                             center_j + 64 - cropper_size: center_j + 64 + cropper_size]
 
     cropped_data.append(temp)
     cropped_data = np.array(cropped_data)
@@ -222,3 +220,7 @@ def crop_images(cropper_size, center_of_masses, data):
     #print(str(cropped_data.shape) + " cropped data shape")
 
     return cropped_data
+
+images, masks = get_data(64)
+#show_imgs(images)
+#show_imgs(masks)
