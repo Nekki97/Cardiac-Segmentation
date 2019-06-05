@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 # import Nii_Loader as nii
 # import torch
 # from sklearn.metrics import roc_curve, auc
-from numba import guvectorize
+#from numba import guvectorize
 
 filters = 64
 dropout_rate = 0.5
