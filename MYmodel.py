@@ -5,7 +5,6 @@ from functions import *
 
 def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_weights=None):
     inputs = Input(input_size)
-    print('Inputs in UNet Shape: ' + str(inputs.shape))
     conv_down = np.empty(layers, dtype=object)
     conv_up = np.empty(layers, dtype=object)
     temp = inputs
@@ -29,7 +28,6 @@ def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_
 
     conv_almost_final = Conv2D(2, 3, activation='relu', padding='same', kernel_initializer='he_normal')(temp)
     conv_final = Conv2D(1, 1, activation='sigmoid')(conv_almost_final)
-    print('********** Resulting shape: ' + str(conv_final.shape) + ' **********')
 
     model = Model(input=inputs, output=conv_final)
 
