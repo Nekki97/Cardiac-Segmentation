@@ -110,7 +110,7 @@ for layers in layers_arr:
                         history = model.fit(train_images, train_masks, epochs=epochs, batch_size=batch_size,
                                             validation_data=(val_images, val_masks), verbose=2, shuffle=True)
 
-                        results = model.predict(test_images, verbose=1)
+                        results = model.predict(test_images, verbose=0)
                         np.save("data", results)
 
                         '''
@@ -153,7 +153,7 @@ for layers in layers_arr:
                         mask_prediction = []
                         for i in test_images:
                             i = np.expand_dims(i, 0)
-                            mask_prediction.append(model.predict(i, batch_size=1, verbose=1))
+                            mask_prediction.append(model.predict(i, batch_size=1, verbose=0))
 
                         mask_prediction = np.array(mask_prediction)
                         mask_prediction = np.squeeze(mask_prediction, 1)
