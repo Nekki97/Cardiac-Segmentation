@@ -108,7 +108,7 @@ for layers in layers_arr:
 
                         model = param_unet(input_size, filters, layers, dropout_rate, loss_func)
                         history = model.fit(train_images, train_masks, epochs=epochs, batch_size=batch_size,
-                                            validation_data=(val_images, val_masks), verbose=0, shuffle=True)
+                                            validation_data=(val_images, val_masks), verbose=1, shuffle=True)
 
                         results = model.predict(test_images, verbose=1)
                         np.save("data", results)
