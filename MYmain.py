@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 # import Nii_Loader as nii
 # import torch
 # from sklearn.metrics import roc_curve, auc
+from numba import guvectorize
 
 filters = 64
 dropout_rate = 0.5
@@ -18,37 +19,35 @@ whichmodel = 'param_unet' #TODO: implement other architectures (segnet wie hendr
 splits = {1: (0.3, 0.1)}
 
 epochs = 100
-batch_size = 32 # auf 0.75*self ab 5 layers
+basic_batch_size = 32 # auf 0.75*self ab 5 layers
 seeds = [1, 2]
-data_percs = [0.25, 1] # PERCENTAGE OF PEOPLE (TOTAL DATA)
-layers_arr = [3, 6]
+data_percs = [0.75, 1] # PERCENTAGE OF PEOPLE (TOTAL DATA)
+layers_arr = [3, 4]
 loss_funcs = ['binary crossentropy']
-patient_percs = [0.25, 1]
+patient_percs = [0.75, 1]
 
 #TODO: anfangen plots zu machen mit matplotlib
 
 all_results = []
 
-(pgm_images, pgm_masks) = pgm.get_data(cropper_size)
-
-for patient in range(len(pgm_images)):
-    pgm_images[patient] = np.array(pgm_images[patient])
-    pgm_masks[patient] = np.array(pgm_masks[patient])
-
-for patient_perc in patient_percs:
-    pgm_images, pgm_masks = getpatpercs(pgm_images, pgm_masks, patient_perc)
-
-    for patient in range(len(pgm_images)):
-        pgm_images[patient] = np.array(pgm_images[patient])
-        pgm_masks[patient] = np.array(pgm_masks[patient])
-
-    for layers in layers_arr:
-        if layers > 4:
-            batch_size = int(0.75*batch_size)
-        for loss_func in loss_funcs:
-            for seed in seeds:
+for layers in layers_arr:
+    if layers > 4:
+        batch_size = int(0.5*basic_batch_size)
+    else:
+        batch_size = basic_batch_size
+    for loss_func in loss_funcs:
+        for seed in seeds:
+            for split_number in range(len(splits)):
                 for perc_index in range(len(data_percs)):
-                    for split_number in range(len(splits)):
+                    for patient_perc in patient_percs:
+
+                        (pgm_images, pgm_masks) = pgm.get_data(cropper_size)
+                        pgm_images, pgm_masks = getpatpercs(pgm_images, pgm_masks, patient_perc)
+
+                        for patient in range(len(pgm_images)):
+                            pgm_images[patient] = np.array(pgm_images[patient])
+                            pgm_masks[patient] = np.array(pgm_masks[patient])
+
                         data_dict = getalldata(pgm_images, pgm_masks, data_percs, splits, seed)
                         data = data_dict[str(data_percs[perc_index])+"Perc"]
                         train_images, train_masks, val_images, val_masks, test_images, test_masks = \
@@ -67,8 +66,11 @@ for patient_perc in patient_percs:
                         print('Mask Shape: ' + str(train_masks.shape))
 
                         input_size = train_images.shape[1:4]
-
                         train_val_test_split = splits.get(split_number + 1)
+
+                        print("EXPERIMENT:", layers, "layers", patient_perc*100, "% per pat",
+                              data_percs[perc_index]*100, "% total data")
+                        print("TOTAL DATA SIZE", train_images.shape[0]+val_images.shape[0]+test_images.shape[0])
 
                         index = 1
                         path = "results"
@@ -103,25 +105,19 @@ for patient_perc in patient_percs:
                                 index += 1
                             os.makedirs(path + '/' + str(index))
                             save_dir = path + '/' + str(index)
-                        #if not os.path.exists(save_dir + '/checkpoints'):
-                        #    os.makedirs(save_dir + '/checkpoints')
 
                         model = param_unet(input_size, filters, layers, dropout_rate, loss_func)
-                        #model_checkpoint = ModelCheckpoint(save_dir + '/checkpoints/unet{epoch:02d}.hdf5', monitor='loss',
-                                                           #verbose=0, save_best_only=True)
                         history = model.fit(train_images, train_masks, epochs=epochs, batch_size=batch_size,
-                                            validation_data=(val_images, val_masks), verbose=1, shuffle=True, )#,
-                                            #callbacks=[model_checkpoint])
+                                            validation_data=(val_images, val_masks), verbose=0, shuffle=True)
 
                         results = model.predict(test_images, verbose=1)
                         np.save("data", results)
-
 
                         '''
                         save_datavisualisation2(train_images, train_masks, save_dir, "train", 12, 3, 0.2, True)
                         save_datavisualisation2(test_images, test_masks, save_dir, "test", 12, 3, 0.2, True)
                         save_datavisualisation2(val_images, val_masks, save_dir, "val", 12, 3, 0.2, True)
-        
+
                         plt.imshow(test_images[0][:, :, 0], cmap='gray')
                         plt.show()
                         plt.imshow(test_masks[0][:, :, 0], cmap='gray')
@@ -129,7 +125,6 @@ for patient_perc in patient_percs:
                         plt.imshow(results[0][:, :, 0], cmap='gray')
                         plt.show()
                         '''
-
 
                         # Plot training & validation accuracy values
                         plt.plot(history.history['acc'])
@@ -139,7 +134,7 @@ for patient_perc in patient_percs:
                         plt.xlabel('Epoch')
                         plt.legend(['Train', 'Test'], loc='upper left')
                         plt.savefig(os.path.join(save_dir, str(epochs) + 'epochs_accuracy_values.png'))
-                        #plt.show()
+                        # plt.show()
 
                         plt.close()
 
@@ -151,7 +146,7 @@ for patient_perc in patient_percs:
                         plt.xlabel('Epoch')
                         plt.legend(['Train', 'Test'], loc='upper left')
                         plt.savefig(os.path.join(save_dir, str(epochs) + 'epochs_loss_values.png'))
-                        #plt.show()
+                        # plt.show()
 
                         plt.close()
 
@@ -175,7 +170,6 @@ for patient_perc in patient_percs:
                             "data_perc": data_percs[perc_index],
                             "seed": seed,
                             "filters": filters,
-                            "input_size": input_size,
                             "loss_function": loss_func,
                             "patient_perc": patient_perc
                         }
