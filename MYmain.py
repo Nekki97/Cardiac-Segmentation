@@ -20,9 +20,9 @@ splits = {1: (0.3, 0.1)}
 
 epochs = 100
 basic_batch_size = 32 # auf 0.75*self ab 5 layers
-seeds = [3]
+seeds = [1]
 data_percs = [0.75, 1] # PERCENTAGE OF PEOPLE (TOTAL DATA)
-layers_arr = [2]
+layers_arr = [5]
 loss_funcs = ['binary crossentropy']
 patient_percs = [0.75, 1]
 
