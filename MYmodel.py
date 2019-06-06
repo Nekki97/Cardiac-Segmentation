@@ -5,6 +5,7 @@ from functions import *
 
 def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_weights=None):
     inputs = Input(input_size)
+    print('Inputs in UNet Shape: ' + str(inputs.shape))
     conv_down = np.empty(layers, dtype=object)
     conv_up = np.empty(layers, dtype=object)
     temp = inputs
@@ -28,14 +29,18 @@ def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_
 
     conv_almost_final = Conv2D(2, 3, activation='relu', padding='same', kernel_initializer='he_normal')(temp)
     conv_final = Conv2D(1, 1, activation='sigmoid')(conv_almost_final)
+    print('********** Resulting shape: ' + str(conv_final.shape) + ' **********')
 
     model = Model(input=inputs, output=conv_final)
 
-    if loss_name == 'binary crossentropy':
+    if loss_name == 'binary_crossentropy':
         model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
     if loss_name == 'dice':
         model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=['accuracy'])
-
+    if loss_name == 'weighted_cross_entropy':
+        model.compile(optimizer=Adam(lr=1e-4), loss=weighted_cross_entropy, metrics=['accuracy'])
+    if loss_name == 'MMC':
+        model.compile(optimizer=Adam(lr=1e-4), loss=MMC, metrics=['accuracy'])
     model.summary()
 
     if (pretrained_weights):
@@ -43,10 +48,103 @@ def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_
 
     return model
 
+
+def segnet(img_shape, kernel_size, Dropout_rate, loss_name):
+    inputs = Input(img_shape)
+    model = Sequential()
+
+    # Encoder Layers
+    model.add(Conv2D(32, kernel_size, activation='relu', padding='same', input_shape=img_shape))
+    model.add(BatchNormalization())
+    model.add(Conv2D(32, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(64, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(64, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D((2, 2), padding='same'))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D((2, 2), padding='same'))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(256, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(256, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(256, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D((2, 2), padding='same'))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(256, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(256, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(256, kernel_size, activation='relu', padding='same'))
+    model.add(MaxPooling2D((2, 2), padding='same'))
+    model.add(Dropout(Dropout_rate))
+    # Decoder Layers
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(UpSampling2D((2, 2)))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(128, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(UpSampling2D((2, 2)))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(64, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(64, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(64, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(UpSampling2D((2, 2)))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(32, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(32, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(UpSampling2D((2, 2)))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(32, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(32, kernel_size, activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(UpSampling2D((2, 2)))
+    model.add(Dropout(Dropout_rate))
+    model.add(Conv2D(2,1, activation='relu', padding='same'))  #try this
+    model.add(Conv2D(1, 1, activation='sigmoid', padding='same'))
+
+    if loss_name == 'binary_crossentropy':
+        model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
+    if loss_name == 'dice':
+        model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=['accuracy'])
+    if loss_name == 'weighted_cross_entropy':
+        model.compile(optimizer=Adam(lr=1e-4), loss=weighted_cross_entropy, metrics=['accuracy'])
+
+    model.summary()
+
+    return model
+
+
 if __name__ == '__main__':      #only gets called if functions.py is run
 
-    model = param_unet((128,128,1), 64, 6, 0.5)
+    model = param_unet((128,128,1), 64, 5, 0.5, "binary_crossentropy")
 
     from keras.utils import plot_model
 
-    plot_model(model, to_file='UNET-Models/param_unet.svg', show_shapes=True)
+    plot_model(model, to_file='Desktop/param_unet.svg', show_shapes=True)
