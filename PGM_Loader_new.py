@@ -31,7 +31,7 @@ def read_pgm(filename, byteorder='>'):
 
 
 def get_labelled_img_paths(patient):
-    if patient<10:
+    if patient < 10:
         patient = '0' + str(patient)
     path = 'pgm_data/all_data/Pat' + str(patient)
     filepaths = []
