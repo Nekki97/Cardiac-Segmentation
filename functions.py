@@ -3,6 +3,7 @@ import random
 #import imageio
 from sklearn import model_selection
 import keras.backend as K
+import tensorflow as tf
 
 '''
 def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folder, name, bunch_size, rows,
@@ -209,7 +210,7 @@ def getalldata(images, masks, data_percs, splits, seed):
         amount = int(len(images) * data_percs[i])
         perc = amount/len(images)*100
         remaining = data_percs[i]*100 - perc
-        if remaining/100*len(images) > 0.5*images[max(amount-1,0)].shape[0]:
+        if remaining/100*len(images) > 0.5*images[max(amount-1, 0)].shape[0]:
             amount += 1
         random.seed(seed)
         ind = random.sample(range(len(images)), amount)
@@ -251,11 +252,27 @@ def dice_coef(y_true, y_pred, smooth=1):
     ref: https://arxiv.org/pdf/1606.04797v1.pdf
     """
     intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
-    return (2. * intersection + smooth) / (K.sum(K.square(y_true),-1) + K.sum(K.square(y_pred),-1) + smooth)
+    return (2. * intersection + smooth) / (K.sum(K.square(y_true), -1) + K.sum(K.square(y_pred), -1) + smooth)
 
 
 def dice_coef_loss(y_true, y_pred):
     return 1-dice_coef(y_true, y_pred)
+
+
+def weighted_cross_entropy(y_true, y_pred, beta=0.7):
+  def convert_to_logits(y_pred):
+      # see https://github.com/tensorflow/tensorflow/blob/r1.10/tensorflow/python/keras/backend.py#L3525
+      y_pred = tf.clip_by_value(y_pred, tf.keras.backend.epsilon(), 1 - tf.keras.backend.epsilon())
+
+      return tf.log(y_pred / (1 - y_pred))
+
+  def loss(y_true, y_pred):
+    y_pred = convert_to_logits(y_pred)
+    loss = tf.nn.weighted_cross_entropy_with_logits(logits=y_pred, targets=y_true, pos_weight=beta)
+
+    return tf.reduce_mean(loss)
+
+  return loss(y_true, y_pred)
 
 
 def collectimages(mylist):
@@ -279,24 +296,3 @@ def getpatpercs(images, masks, patperc):
         new_masks.append(temp_masks)
     return new_imgs, new_masks
 
-'''
-def correctarray(myarray):
-    min = myarray[0].shape[0]
-    for pat in range(len(myarray)):
-        if myarray[pat].shape[0] < min:
-            min = myarray[pat].shape[0]
-
-    for pat in range(len(myarray)):
-        for j in range(pat):
-            print(pat, j)
-            if j == pat:
-                continue
-            while myarray[j].shape[0] > myarray[pat].shape[0]:
-                myarray[j] = (myarray[j])[0:(myarray[j].shape[0]-1), :, :, :]
-                print("from", myarray[j].shape[0], "to", myarray[j].shape[0]-1)
-            while myarray[j].shape[0] < myarray[pat].shape[0]:
-                myarray[pat] = (myarray[pat])[0:(myarray[pat].shape[0]-1), :, :, :]
-                print("from", myarray[pat].shape[0], "to", myarray[pat].shape[0] - 1)
-        print("Corrected to", myarray[pat].shape[0])
-    return myarray
-    '''
