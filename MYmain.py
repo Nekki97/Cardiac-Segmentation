@@ -1,30 +1,62 @@
 from keras.models import *
 from keras.callbacks import ModelCheckpoint
-from MYmodel import param_unet
+from MYmodel import param_unet, segnet
 import PGM_Loader_new as pgm
 import os
 from functions import *
 import scoring_utils as su
 from matplotlib import pyplot as plt
+
+from keras.backend.tensorflow_backend import set_session
+from keras.backend.tensorflow_backend import clear_session
+from keras.backend.tensorflow_backend import get_session
+import tensorflow
+
 # import Nii_Loader as nii
 # import torch
-# from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_curve, auc
 #from numba import guvectorize
 
+from tensorflow.python.client import device_lib
+
+print(device_lib.list_local_devices())
+
+import gc
+
+def reset_keras():
+    sess = get_session()
+    clear_session()
+    sess.close()
+    sess = get_session()
+
+    try:
+        del model # this is from global space - change this as you need
+    except:
+        pass
+
+    print(gc.collect()) # if it's done something you should see a number being outputted
+
+    # use the same config as you used to create the session
+    config = tensorflow.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 1
+    config.gpu_options.visible_device_list = "0"
+    set_session(tensorflow.Session(config=config))
+
 filters = 64
-dropout_rate = 0.5
+dropout_rate = 0.5  # TODO: change to 0.4
 cropper_size = 64 # --> 128x128 after padding
 
-whichmodel = 'param_unet' #TODO: implement other architectures (segnet wie hendrik, suche andere)
+whichmodel = 'param_unet'
+#whichmodel = 'segnet'
 splits = {1: (0.3, 0.1)}
 
 epochs = 100
-basic_batch_size = 32 # auf 0.75*self ab 5 layers
-seeds = [3]
-data_percs = [0.5] # PERCENTAGE OF PEOPLE (TOTAL DATA)
-layers_arr = [2,5]
-loss_funcs = ['binary crossentropy']
-patient_percs = [0.75, 1]
+basic_batch_size = 12 # auf 0.75*self ab 5 layers
+seeds = [1, 2, 3]
+data_percs = [0.25, 0.5, 0.75, 1] # PERCENTAGE OF PEOPLE (TOTAL DATA)
+layers_arr = [3]
+loss_funcs = ["weighted_cross_entropy"]
+patient_percs = [0.25, 0.5, 0.75, 1]
 
 #TODO: anfangen plots zu machen mit matplotlib
 
@@ -40,6 +72,8 @@ for layers in layers_arr:
             for split_number in range(len(splits)):
                 for perc_index in range(len(data_percs)):
                     for patient_perc in patient_percs:
+
+                        reset_keras()
 
                         (pgm_images, pgm_masks) = pgm.get_data(cropper_size)
                         pgm_images, pgm_masks = getpatpercs(pgm_images, pgm_masks, patient_perc)
@@ -73,7 +107,20 @@ for layers in layers_arr:
                         print("TOTAL DATA SIZE", train_images.shape[0]+val_images.shape[0]+test_images.shape[0])
 
                         index = 1
-                        path = "results"
+                        path = "results/" + whichmodel + '-' + str(epochs) + "_epochs" + '-' + loss_func + '-' + \
+                               str(int(data_percs[perc_index]*100)) + '%_total_data' + '-' + \
+                               str(int(patient_perc*100)) + '%_per_pat' + '-' + str(train_val_test_split) + '_split' \
+                               + '-' + str(layers) + '_layers' + '-' + 'seed_' + str(seed)
+                        if not os.path.exists(path + "-" + str(index) + '/'):
+                            os.makedirs(path + '-' + str(index) + '/')
+                            save_dir = path + '-' + str(index) + '/'
+                        else:
+                            while os.path.exists(path + '-' + str(index) + '/'):
+                                index += 1
+                            os.makedirs(path + '-' + str(index)+ '/')
+                            save_dir = path + '-' + str(index) + '/'
+
+                        '''
                         if not os.path.exists(path):
                             os.makedirs(path)
                         path += '/' + whichmodel
@@ -105,8 +152,12 @@ for layers in layers_arr:
                                 index += 1
                             os.makedirs(path + '/' + str(index))
                             save_dir = path + '/' + str(index)
+                        '''
+                        if whichmodel == "param_unet":
+                            model = param_unet(input_size, filters, layers, dropout_rate, loss_func)
+                        if whichmodel == "segnet":
+                            model = segnet(input_size, 3, dropout_rate, loss_func)
 
-                        model = param_unet(input_size, filters, layers, dropout_rate, loss_func)
                         history = model.fit(train_images, train_masks, epochs=epochs, batch_size=batch_size,
                                             validation_data=(val_images, val_masks), verbose=2, shuffle=True)
 
@@ -117,7 +168,6 @@ for layers in layers_arr:
                         save_datavisualisation2(train_images, train_masks, save_dir, "train", 12, 3, 0.2, True)
                         save_datavisualisation2(test_images, test_masks, save_dir, "test", 12, 3, 0.2, True)
                         save_datavisualisation2(val_images, val_masks, save_dir, "val", 12, 3, 0.2, True)
-
                         plt.imshow(test_images[0][:, :, 0], cmap='gray')
                         plt.show()
                         plt.imshow(test_masks[0][:, :, 0], cmap='gray')
@@ -174,23 +224,28 @@ for layers in layers_arr:
                             "patient_perc": patient_perc
                         }
                         dice = []
-
+                        #roc_auc = []
                         output = np.squeeze(mask_prediction)
                         test_masks_temp = np.squeeze(test_masks)
+                        print(output.shape, "OUTPUT SHAPE")
+                        print(test_masks_temp.shape, "TESTMASKTEMP SHAPE")
                         for s in range(test_masks.shape[0]):
-                            dice.append(getdicescore(output[s, :], test_masks_temp[s, :]))
+                            dice.append(getdicescore(test_masks_temp[s, :, :], output[s, :, :]))
+                            #fpr, tpr, thresholds = roc_curve(test_masks_temp[s, :, :], output[s, :, :])
+                            #roc_auc.append(auc(fpr, tpr))
 
                         median_dice_score = np.median(dice)
+                        #median_roc_score = np.median(roc_auc)
 
                         results["median_dice_score"] = median_dice_score
-                        #results["dice"] = dice
 
-                        #torch.save(
-                        #results, os.path.join(save_dir, str(epochs) + 'epochs_evaluation_results'))
                         results_file = open(save_dir + "/results.txt", "w+")
                         results_file.write(str(results))
                         results_file.close()
 
+                        #roc_auc_score = roc_auc_score(test_masks_temp[0, :, :], output[0, :, :])
+
+                        #print('ROC SCORE: ' + str(median_roc_score))
                         print('DICE SCORE: ' + str(median_dice_score))
 
                         output = np.expand_dims(output, -1)
