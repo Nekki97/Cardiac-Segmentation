@@ -39,8 +39,6 @@ def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_
         model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=['accuracy'])
     if loss_name == 'weighted_cross_entropy':
         model.compile(optimizer=Adam(lr=1e-4), loss=weighted_cross_entropy, metrics=['accuracy'])
-    if loss_name == 'MMC':
-        model.compile(optimizer=Adam(lr=1e-4), loss=MMC, metrics=['accuracy'])
     model.summary()
 
     if (pretrained_weights):
