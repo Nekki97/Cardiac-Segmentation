@@ -4,128 +4,31 @@ import random
 from sklearn import model_selection
 import keras.backend as K
 import tensorflow as tf
-
-'''
-def save_datavisualisation3(img_data, myocar_labels, predited_labels, save_folder, name, bunch_size, rows,
-                            percentage, normalized=False):
-    amount = int(img_data.shape[0] * percentage)
-    ind = random.sample(range(img_data.shape[0]), amount)
-    img_data = img_data[ind]
-    myocar_labels = myocar_labels[ind]
-    predited_labels = predited_labels[ind]
-    pics = int(img_data.shape[0] / (bunch_size * rows)) + 1
-    remaining_imgs = img_data.shape[0]
-    for pic in range(pics):
-        indx_start = bunch_size * rows * pic
-        indx_end = bunch_size * rows * (pic + 1)
-        i_bunch = []
-        j_bunch = []
-        k_bunch = []
-        while len(i_bunch) < bunch_size * rows and len(i_bunch) < img_data.shape[0]:
-            while len(j_bunch) < bunch_size * rows and len(j_bunch) < myocar_labels.shape[0]:
-                while len(k_bunch) < bunch_size * rows and len(k_bunch) < predited_labels.shape[0]:
-                    for i, j, k in zip(img_data[indx_start:indx_end, :, :, 0],
-                                       myocar_labels[indx_start:indx_end, :, :, 0],
-                                       predited_labels[indx_start:indx_end, :, :, 0]):
-                        if normalized:
-                            i = i * 255
-                            j = j * 255
-                            k = k * 255
-                        i_bunch.append(i)
-                        j_bunch.append(j)
-                        k_bunch.append(k)
-        i_bunch = np.array(i_bunch, dtype=float)
-        j_bunch = np.array(j_bunch, dtype=float)
-        k_bunch = np.array(k_bunch, dtype=float)
-        full_rows = []
-        for row_number in range(rows):
-            if remaining_imgs > 0:
-                i_row = i_bunch[bunch_size * row_number, :, :]
-                j_row = j_bunch[bunch_size * row_number, :, :]
-                k_row = k_bunch[bunch_size * row_number, :, :]
-                remaining_imgs = max(remaining_imgs - 1, 0)
-                for index in range(bunch_size * row_number + 1, bunch_size * (row_number + 1)):
-                    if remaining_imgs > 0:
-                        image = i_bunch[index, :, :]
-                        myocar_label = j_bunch[index, :, :]
-                        predicted_label = k_bunch[index, :, :]
-                    else:
-                        x = img_data.shape[1]
-                        y = img_data.shape[2]
-                        image = np.zeros((x, y))
-                        myocar_label = np.zeros((x, y))
-                        predicted_label = np.zeros((x, y))
-                    i_row = np.hstack((i_row, image))
-                    j_row = np.hstack((j_row, myocar_label))
-                    k_row = np.hstack((k_row, predicted_label))
-                    remaining_imgs = max(remaining_imgs - 1, 0)
-                full_row = np.vstack((i_row, j_row, k_row))
-                if row_number == 0:
-                    full_rows = full_row
-                else:
-                    full_rows = np.array(full_rows, dtype=float)
-                    full_rows = np.append(full_rows, full_row, axis=0)
-        full_image = full_rows[0]
-        for full_row in full_rows[1:full_rows.shape[0]]:
-            full_image = np.vstack((full_image, full_row))
-        imageio.imwrite(save_folder + "/" + name + '%d_%d.png' % (indx_start, indx_end-1), full_image)
-        print("Visualised a bunch")
-    print("******Finished visualising " + str(amount) + " images******")
+import imageio
+import os
 
 
-def save_datavisualisation2(img_data, myocar_labels, save_folder, name, bunch_size, rows,
-                            percentage, normalized=False):
-    amount = int(img_data.shape[0] * percentage)
-    ind = random.sample(range(img_data.shape[0]), amount)
-    img_data = img_data[ind]
-    myocar_labels = myocar_labels[ind]
-    pics = int(img_data.shape[0]/(bunch_size*rows))+1
-    remaining_imgs = img_data.shape[0]
-    for pic in range(pics):
-        indx_start = bunch_size * rows * pic
-        indx_end = bunch_size * rows * (pic + 1)
-        i_bunch = []
-        j_bunch = []
-        while len(i_bunch) < bunch_size * rows and len(i_bunch) <= img_data.shape[0]:
-            while len(j_bunch) < bunch_size * rows and len(j_bunch) <= myocar_labels.shape[0]:
-                for i, j in zip(img_data[indx_start:indx_end, :, :, 0], myocar_labels[indx_start:indx_end, :, :, 0]):
-                    if normalized:
-                        i = i * 255
-                        j = j * 255
-                    j_bunch.append(j)
-                    i_bunch.append(i)
-        i_bunch = np.array(i_bunch, dtype=float)
-        j_bunch = np.array(j_bunch, dtype=float)
-        full_rows = []
-        for row_number in range(rows):
-            if remaining_imgs > 0:
-                i_row = i_bunch[bunch_size*row_number, :, :]
-                j_row = j_bunch[bunch_size*row_number, :, :]
-                remaining_imgs = max(remaining_imgs - 1, 0)
-                for index in range(bunch_size*row_number+1, bunch_size*(row_number+1)):
-                    if remaining_imgs > 0:
-                        image = i_bunch[index, :, :]
-                        label = j_bunch[index, :, :]
-                    else:
-                        x = img_data.shape[1]
-                        y = img_data.shape[2]
-                        image = np.zeros((x, y))
-                        label = np.zeros((x, y))
-                    i_row = np.hstack((i_row, image))
-                    j_row = np.hstack((j_row, label))
-                    remaining_imgs = max(remaining_imgs - 1, 0)
-                full_row = np.vstack((i_row, j_row))
-                if row_number == 0:
-                    full_rows = full_row
-                else:
-                    full_rows = np.array(full_rows, dtype=float)
-                    full_rows = np.append(full_rows, full_row, axis=0)
-        full_image = full_rows[0]
-        for full_row in full_rows[1:full_rows.shape[0]]:
-            full_image = np.vstack((full_image, full_row))
-        imageio.imwrite(save_folder + "/" + name + '%d_%d.png' % (indx_start, indx_end-1), full_image)
-    print("******Finished visualising " + str(amount) + " images******")
-'''
+def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels, score, score_name, save_folder):
+    counter = 0
+    img_data = np.moveaxis(img_data,-1,0)
+    myocar_labels = np.moveaxis(myocar_labels, -1, 0)
+    predicted_labels = np.moveaxis(predicted_labels, -1, 0)
+    rounded_labels = np.moveaxis(rounded_labels, -1, 0)
+    for i, j, k, l in zip(img_data, myocar_labels, predicted_labels, rounded_labels):
+        i_patch = i[0, :, :]*255
+        j_patch = j[0, :, :]*255
+        k_patch = k[0, :, :]*255
+        l_patch = l[0, :, :]*255
+        for slice in range(1, i.shape[0]):
+            i_patch = np.hstack((i_patch, i[slice, :, :]*255))
+            j_patch = np.hstack((j_patch, j[slice, :, :]*255))
+            k_patch = np.hstack((k_patch, k[slice, :, :]*255))
+            l_patch = np.hstack((l_patch, l[slice, :, :]*255))
+        image = np.vstack((i_patch, j_patch, k_patch, l_patch))
+        imageio.imwrite(save_folder + '%s_%s.png' % (score,score_name), image)
+        counter = counter + 1
+        print("Done visualising at", save_folder, '%s_%s.png' %(score,score_name))
+
 
 
 def get_split(images, masks, split, seed):
@@ -252,7 +155,7 @@ def dice_coef(y_true, y_pred, smooth=1):
     ref: https://arxiv.org/pdf/1606.04797v1.pdf
     """
     intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
-    return (2. * intersection + smooth) / (K.sum(K.square(y_true), -1) + K.sum(K.square(y_pred), -1) + smooth)
+    return (2. * intersection + smooth) / (K.sum(y_true, -1) + K.sum(K.square(y_pred), -1) + smooth)
 
 
 def dice_coef_loss(y_true, y_pred):
@@ -296,3 +199,24 @@ def getpatpercs(images, masks, patperc):
         new_masks.append(temp_masks)
     return new_imgs, new_masks
 
+def matthews_coeff(y_true, y_pred):
+    y_pred = tf.convert_to_tensor(y_pred, np.float32)
+    y_true = tf.convert_to_tensor(y_true, np.float32)
+    y_pred_pos = K.round(K.clip(y_pred, 0, 1))
+    y_pred_neg = 1 - y_pred_pos
+    y_pos = K.round(K.clip(y_true, 0, 1))
+    y_neg = 1 - y_pos
+    tp = K.sum(y_pos * y_pred_pos)
+    tn = K.sum(y_neg * y_pred_neg)
+    fp = K.sum(y_neg * y_pred_pos)
+    fn = K.sum(y_pos * y_pred_neg)
+    numerator = (tp * tn - fp * fn)
+    denominator = K.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+    return K.eval(numerator / (denominator + K.epsilon()))
+
+
+def threshold(images, upper, lower):
+    images = np.array(images)
+    images[images > upper] = 1
+    images[images < lower] = 0
+    return images
