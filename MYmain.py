@@ -62,8 +62,8 @@ splits = {1:(0.3,0.1)}
 epochs = 100
 basic_batch_size = 32
 seeds = [1, 2, 3, 4]
-data_percs = [0.25, 0.5, 0.75, 1] # PERCENTAGE OF PEOPLE (TOTAL DATA)
-layers_arr = [3]
+data_percs = [1, 0.75, 0.5, 0.25] # PERCENTAGE OF PEOPLE (TOTAL DATA)
+layers_arr = [7, 6, 5]
 loss_funcs = ["weighted_cross_entropy", "binary_crossentropy", "dice"]
 patient_percs = [1]
 
@@ -73,7 +73,7 @@ for split in splits:
     for loss_func in loss_funcs:
         for layers in layers_arr:
             if layers > 4:
-                batch_size = int(0.75*basic_batch_size)
+                batch_size = int((0.5**(layers-4))*basic_batch_size)
             else:
                 batch_size = basic_batch_size
             for perc in data_percs:
