@@ -7,20 +7,27 @@ from functions import *
 import scoring_utils as su
 from matplotlib import pyplot as plt
 import pandas as pd
+
+#os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 import keras
 from keras.backend.tensorflow_backend import set_session
 from keras.backend.tensorflow_backend import clear_session
 from keras.backend.tensorflow_backend import get_session
-import tensorflow
+import tensorflow as tf
+
+from keras import backend as K
+session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+K.set_session(sess)
 
 # import Nii_Loader as nii
 # import torch
 from sklearn.metrics import roc_curve, auc
-#from numba import guvectorize
 
-from tensorflow.python.client import device_lib
+#from tensorflow.python.client import device_lib
 
-print(device_lib.list_local_devices())
+#print(device_lib.list_local_devices())
 
 import gc
 
@@ -38,10 +45,11 @@ def reset_keras():
     print(gc.collect()) # if it's done something you should see a number being outputted
 
     # use the same config as you used to create the session
-    config = tensorflow.ConfigProto()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 1
     config.gpu_options.visible_device_list = "0"
-    set_session(tensorflow.Session(config=config))
+    set_session(tf.Session(config=config))
 
 filters = 64
 dropout_rate = 0.5
@@ -52,62 +60,57 @@ whichmodel = 'param_unet'
 splits = {1:(0.3,0.1)}
 
 epochs = 100
-basic_batch_size = 12 # auf 0.75*self ab 5 layers
-seeds = [4]
+basic_batch_size = 32
+seeds = [1, 2, 3, 4]
 data_percs = [0.25, 0.5, 0.75, 1] # PERCENTAGE OF PEOPLE (TOTAL DATA)
-layers_arr = [2, 4]
-loss_funcs = ["weighted_cross_entropy"]
-patient_percs = [0.25, 0.5, 0.75, 1]
+layers_arr = [3]
+loss_funcs = ["weighted_cross_entropy", "binary_crossentropy", "dice"]
+patient_percs = [1]
 
 all_results = []
 
-for split_number in range(len(splits)):
+for split in splits:
     for loss_func in loss_funcs:
         for layers in layers_arr:
             if layers > 4:
-                batch_size = int(0.5*basic_batch_size)
+                batch_size = int(0.75*basic_batch_size)
             else:
                 batch_size = basic_batch_size
-            for perc_index in range(len(data_percs)):
+            for perc in data_percs:
                 for patient_perc in patient_percs:
                     for seed in seeds:
                         reset_keras()
+                        random.seed(seed)
+                        np.random.seed(seed)
+                        tf.set_random_seed(seed)
+                        os.environ['PYTHONHASHSEED'] = str(seed)
+
 
                         (pgm_images, pgm_masks) = pgm.get_data(cropper_size)
-                        pgm_images, pgm_masks = getpatpercs(pgm_images, pgm_masks, patient_perc)
 
-                        for patient in range(len(pgm_images)):
-                            pgm_images[patient] = np.array(pgm_images[patient])
-                            pgm_masks[patient] = np.array(pgm_masks[patient])
+                        train_pats, test_pats, val_pats = get_patient_split(len(pgm_images), splits.get(split))
 
-                        data_dict = getalldata(pgm_images, pgm_masks, data_percs, splits, seed)
-                        data = data_dict[str(data_percs[perc_index])+"Perc"]
-                        train_images, train_masks, val_images, val_masks, test_images, test_masks = \
-                            get_datasets(data, split_number)
+                        train_pats = get_total_perc_pats(train_pats, perc)
+                        test_pats = get_total_perc_pats(test_pats, 1)
+                        val_pats = get_total_perc_pats(val_pats, 1)
 
-                        train_images = np.array(train_images, dtype=float)
-                        test_images = np.array(test_images, dtype=float)
-                        val_images = np.array(val_images, dtype=float)
-                        # train_images = np.expand_dims(train_images,-1) --> add dimension after the last dimension
-
-                        train_masks = np.array(train_masks, dtype=float)
-                        test_masks = np.array(test_masks, dtype=float)
-                        val_masks = np.array(val_masks, dtype=float)
-
-                        print('Input Shape: ' + str(train_images.shape))
-                        print('Mask Shape: ' + str(train_masks.shape))
+                        train_images, train_masks = get_patient_perc_split(pgm_images, pgm_masks, train_pats, patient_perc)
+                        test_images, test_masks = get_patient_perc_split(pgm_images, pgm_masks, test_pats, 1)
+                        val_images, val_masks = get_patient_perc_split(pgm_images, pgm_masks, val_pats, 1)
 
                         input_size = train_images.shape[1:4]
-                        train_val_test_split = splits.get(split_number + 1)
 
-                        print("EXPERIMENT:", layers, "layers", patient_perc*100, "% per pat",
-                              data_percs[perc_index]*100, "% total data")
-                        print("TOTAL DATA SIZE", train_images.shape[0]+val_images.shape[0]+test_images.shape[0])
+                        print("****************************************************************************************************************")
+                        print("EXPERIMENT:", layers, "layers,", perc*100, "% total data,", patient_perc*100, "% per pat,", loss_func, "loss function,", "seed", seed)
+                        print("TRAIN DATA SIZE", train_images.shape[0])
+                        print("VALIDATION DATA SIZE", val_images.shape[0])
+                        print("TEST DATA SIZE", test_images.shape[0])
+                        print("****************************************************************************************************************")
 
                         index = 1
                         path = "results/new/" + whichmodel + '-' + str(epochs) + "_epochs" + '-' + loss_func + '-' + \
-                               str(int(data_percs[perc_index]*100)) + '%_total_data' + '-' + \
-                               str(int(patient_perc*100)) + '%_per_pat' + '-' + str(train_val_test_split) + '_split' \
+                               str(int(perc*100)) + '%_total_data' + '-' + \
+                               str(int(patient_perc*100)) + '%_per_pat' + '-' + str(splits.get(split)) + '_split' \
                                + '-' + str(layers) + '_layers' + '-' + 'seed_' + str(seed)
                         if not os.path.exists(path + "-" + str(index) + '/'):
                             os.makedirs(path + '-' + str(index) + '/')
@@ -123,8 +126,8 @@ for split_number in range(len(splits)):
                         if whichmodel == "segnet":
                             model = segnet(input_size, 3, dropout_rate, loss_func)
 
-                        es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=20, verbose=1,
-                                                           mode='min', baseline=None, restore_best_weights=False)
+                        es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0, patience=20, verbose=1,
+                                                           mode='min', baseline=0.3, restore_best_weights=False)
 
                         history = model.fit(train_images, train_masks, epochs=epochs, batch_size=batch_size,
                                             validation_data=(val_images, val_masks), verbose=2,
@@ -134,6 +137,7 @@ for split_number in range(len(splits)):
                         np.save("data", results)
 
                         # Plot training & validation accuracy values
+
                         plt.plot(history.history['acc'])
                         plt.plot(history.history['val_acc'])
                         plt.title('Model accuracy')
@@ -160,7 +164,7 @@ for split_number in range(len(splits)):
                         mask_prediction = []
                         for i in test_images:
                             i = np.expand_dims(i, 0)
-                            mask_prediction.append(model.predict(i, batch_size=1, verbose=0))
+                            mask_prediction.append(model.predict(i, verbose=0))
 
                         rounded_pred = threshold(mask_prediction, 0.5, 0.5)
 
@@ -175,9 +179,9 @@ for split_number in range(len(splits)):
                             "epochs": epochs,
                             "median_dice_score": "median_dice_score",
                             "median_matthew_coeff": "median_matthew_coeff",
-                            "train_val_test_split": train_val_test_split,
+                            "train_val_test_split": split,
                             "unet_layers": layers,
-                            "data_perc": data_percs[perc_index],
+                            "data_perc": perc*100,
                             "seed": seed,
                             "filters": filters,
                             "loss_function": loss_func,
@@ -187,11 +191,9 @@ for split_number in range(len(splits)):
                         m_coeffs = []
                         output = np.squeeze(rounded_pred)
                         test_masks_temp = np.squeeze(test_masks)
-                        print(output.shape, "OUTPUT SHAPE")
-                        print(test_masks_temp.shape, "TESTMASKTEMP SHAPE")
                         for s in range(test_masks.shape[0]):
                             dice.append(getdicescore(test_masks_temp[s, :, :], output[s, :, :]))
-                            m_coeffs.append(matthews_coeff(test_masks_temp[s, :, :], output[s, :, :]))
+                            #m_coeffs.append(matthews_coeff(test_masks_temp[s, :, :], output[s, :, :]))
 
                         median_dice_score = np.median(dice)
                         median_matthew_coeff = np.median(m_coeffs)
@@ -204,7 +206,7 @@ for split_number in range(len(splits)):
                         results_file.close()
 
                         output = np.expand_dims(output, -1)
-                        save_visualisation(test_images, test_masks, mask_prediction, output, median_matthew_coeff, 'matthews', save_dir)
+                        #save_visualisation(test_images, test_masks, mask_prediction, output, median_matthew_coeff, 'matthews', save_dir)
                         save_visualisation(test_images, test_masks, mask_prediction, output, median_dice_score, 'dice', save_dir)
                         all_results.append(results)
 
@@ -221,14 +223,14 @@ plt.hist(df.values, bins=bins, edgecolor="k")
 plt.xticks(bins)
 plt.ylabel("# of Experiments")
 plt.xlabel("Matthews Coefficient")
-plt.savefig('results/' + str(epochs) + 'matthews_coeffs.png')
+#plt.savefig('results/' + str(epochs) + 'matthews_coeffs.png')
 
 print(' BEST MEDIAN DICE SCORE:', round(all_results[best_idx]["median_dice_score"], 2),
       ' BEST MEDIAN MATTHEW COEFF:', round(all_results[best_idx]["median_matthew_coeff"], 2),
       'with', all_results[best_idx]["train_val_test_split"],
       'split with seed:', all_results[best_idx]["seed"],
       'using', all_results[best_idx]["loss_function"], 'as loss function',
-      'and', all_results[best_idx]["data_perc"]*100,
+      'and', all_results[best_idx]["data_perc"],
       '% of the total data with', all_results[best_idx]["patient_perc"]*100,
       '% data per patient after', all_results[best_idx]["epochs"],  "epochs")
 
@@ -238,7 +240,7 @@ final_results_file.write(' BEST MEDIAN DICE SCORE: ' + str(round(all_results[bes
                          ' with ' + str(all_results[best_idx]["train_val_test_split"]) +
                          ' split with seed: ' + str(all_results[best_idx]["seed"]) +
                          ' using ' + str(all_results[best_idx]["loss_function"]) + ' as loss function ' +
-                         ' and ' + str(all_results[best_idx]["data_perc"]*100) +
+                         ' and ' + str(all_results[best_idx]["data_perc"]) +
                          '% of the total data with ' + str(all_results[best_idx]["patient_perc"]*100) +
                          '% data per patient after ' + str(all_results[best_idx]["epochs"]) + " epochs")
 final_results_file.close()
