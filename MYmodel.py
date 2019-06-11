@@ -5,7 +5,6 @@ from functions import *
 
 def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_weights=None):
     inputs = Input(input_size)
-    print('Inputs in UNet Shape: ' + str(inputs.shape))
     conv_down = np.empty(layers, dtype=object)
     conv_up = np.empty(layers, dtype=object)
     temp = inputs
@@ -29,17 +28,16 @@ def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_
 
     conv_almost_final = Conv2D(2, 3, activation='relu', padding='same', kernel_initializer='he_normal')(temp)
     conv_final = Conv2D(1, 1, activation='sigmoid')(conv_almost_final)
-    print('********** Resulting shape: ' + str(conv_final.shape) + ' **********')
 
     model = Model(input=inputs, output=conv_final)
 
     if loss_name == 'binary_crossentropy':
         model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
     if loss_name == 'dice':
-        model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=['accuracy'])
+        model.compile(optimizer=Adam(lr=1e-4), loss=dice_coeff_loss, metrics=['accuracy'])
     if loss_name == 'weighted_cross_entropy':
         model.compile(optimizer=Adam(lr=1e-4), loss=weighted_cross_entropy, metrics=['accuracy'])
-    model.summary()
+    #model.summary()
 
     if (pretrained_weights):
         model.load_weights(pretrained_weights)
@@ -130,11 +128,11 @@ def segnet(img_shape, kernel_size, Dropout_rate, loss_name):
     if loss_name == 'binary_crossentropy':
         model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
     if loss_name == 'dice':
-        model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=['accuracy'])
+        model.compile(optimizer=Adam(lr=1e-4), loss=dice_coeff_loss, metrics=['accuracy'])
     if loss_name == 'weighted_cross_entropy':
         model.compile(optimizer=Adam(lr=1e-4), loss=weighted_cross_entropy, metrics=['accuracy'])
 
-    model.summary()
+    #model.summary()
 
     return model
 
