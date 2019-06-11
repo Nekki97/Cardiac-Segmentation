@@ -1,16 +1,14 @@
 import numpy as np
 import random
-#import imageio
-from sklearn import model_selection
 import keras.backend as K
 import tensorflow as tf
 import imageio
-import os
+import sklearn
 
 
 def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels, score, score_name, save_folder):
     counter = 0
-    img_data = np.moveaxis(img_data,-1,0)
+    img_data = np.moveaxis(img_data, -1, 0)
     myocar_labels = np.moveaxis(myocar_labels, -1, 0)
     predicted_labels = np.moveaxis(predicted_labels, -1, 0)
     rounded_labels = np.moveaxis(rounded_labels, -1, 0)
@@ -27,108 +25,86 @@ def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels
         image = np.vstack((i_patch, j_patch, k_patch, l_patch))
         imageio.imwrite(save_folder + '%s_%s.png' % (score,score_name), image)
         counter = counter + 1
-        print("Done visualising at", save_folder, '%s_%s.png' %(score,score_name))
+        print("Done visualising at", save_folder, '%s_%s.png' % (score, score_name))
 
 
+def get_patient_split(pats_amount, split):
 
-def get_split(images, masks, split, seed):
-    # split in form of (0.2,0.2)
-    test_amount = max(int(len(images)*split[0]), 1)
-    val_amount = max(int(len(images)*split[1]), 1)
-    #train_amount = len(images) - test_amount - val_amount
+    test_perc = split[0]
+    val_perc = split[1]
+    train_perc = 1 - test_perc - val_perc
 
-    train_val_images, test_images, train_val_masks, test_masks = \
-        model_selection.train_test_split(images, masks, test_size=test_amount, random_state=seed)
+    test_pat_amount = max(int(test_perc * pats_amount), 1)
+    val_pat_amount = max(int(val_perc * pats_amount), 1)
+    train_pat_amount = max(int(train_perc * pats_amount), 1)
 
-    train_images, val_images, train_masks, val_masks = \
-        model_selection.train_test_split(train_val_images, train_val_masks, test_size=val_amount, random_state=seed)
+    indices = list(range(pats_amount))
 
-    return train_images, train_masks, val_images, val_masks, test_images, test_masks
+    train_inds = random.sample(indices, train_pat_amount)
+    train_pats = []
+    for index in train_inds:
+        train_pats.append(index)
+        indices.remove(index)
 
+    test_inds = random.sample(indices, test_pat_amount)
+    test_pats = []
+    for index in test_inds:
+        test_pats.append(index)
+        indices.remove(index)
 
-def get_splits(images, masks, splits, seed):
-    # split in form of {1:(0.2, 0.2), 2:(0.3, 0.4)}
-    # return: {split1: {train_images_split1: (100,96,96), train_masks_split1: ... }, split2: {}} for every split
+    val_inds = random.sample(indices, val_pat_amount)
+    val_pats = []
+    for index in val_inds:   # remaining patients go to val (remaining after rounding train_perc and test_perc to int)
+        val_pats.append(index)
+        indices.remove(index)
 
-    split_dicts = {}
-    j = 0
-    for split in splits.values():
-        split_data = {}
-        labels = ["train_images", "train_masks", "val_images", "val_masks",
-                  "test_images", "test_masks"]
-        train_images, train_masks, val_images, val_masks, test_images, test_masks = \
-            get_split(images, masks, split, seed)
+    pat_splits = [train_pats, test_pats, val_pats]
 
-        '''
-        print(train_images[0].shape, "train_image")
-        correctarray(train_images)
-        correctarray(train_masks)
-        correctarray(test_masks)
-        correctarray(test_images)
-        correctarray(val_images)
-        correctarray(val_masks)
-        '''
+    train_diff = train_perc - len(train_pats) / pats_amount*100
+    test_diff = test_perc - len(test_pats) / pats_amount * 100
+    val_diff = val_perc - len(val_pats) / pats_amount * 100
+    diffs = [train_diff, test_diff, val_diff]
 
-        data = [train_images, train_masks, val_images, val_masks, test_images, test_masks]
-        for i in range(len(data)):
-            split_data[labels[i]] = data[i]
-        split_dicts["Split#"+str(j)] = split_data
-        j += 1
-    return split_dicts
+    if len(indices) > 0:
+        pat_splits[diffs.index(max(diffs))].append(indices[0])
+        diffs.remove(max(diffs))
+    if len(indices) > 1:
+        pat_splits[diffs.index(max(diffs))].append(indices[1])
+        diffs.remove(max(diffs))
+    if len(indices) > 2:
+        pat_splits[diffs.index(max(diffs))].append(indices[2])
 
-
-def get_datasets(data, split_number):
-
-    index = "Split#"+str(split_number)
-    train_images = data[index].get("train_images")
-    train_masks = data[index].get("train_masks")
-    val_images = data[index].get("val_images")
-    val_masks = data[index].get("val_masks")
-    test_images = data[index].get("test_images")
-    test_masks = data[index].get("test_masks")
-
-    train_images = collectimages(train_images)
-    train_masks = collectimages(train_masks)
-    test_images = collectimages(test_images)
-    test_masks = collectimages(test_masks)
-    val_images = collectimages(val_images)
-    val_masks = collectimages(val_masks)
-
-    train_images = np.array(train_images, dtype=float)
-    test_images = np.array(test_images, dtype=float)
-    val_images = np.array(val_images, dtype=float)
-    train_masks = np.array(train_masks, dtype=float)
-    test_masks = np.array(test_masks, dtype=float)
-    val_masks = np.array(val_masks, dtype=float)
-
-    return train_images, train_masks, val_images, val_masks, test_images, test_masks
+    return train_pats, test_pats, val_pats
 
 
-def getalldata(images, masks, data_percs, splits, seed):
-    images_dict = {}
-    masks_dict = {}
-    split_dicts = {}
-    for i in range(len(data_percs)):
-        assert len(images) == len(masks)
-        amount = int(len(images) * data_percs[i])
-        perc = amount/len(images)*100
-        remaining = data_percs[i]*100 - perc
-        if remaining/100*len(images) > 0.5*images[max(amount-1, 0)].shape[0]:
+def get_total_perc_pats(pats, perc):
+    amount = max(int(perc*len(pats)), 1)
+    if perc - amount / len(pats) >= 0.5 * 1 / len(pats):
+        amount += 1
+    perc_pats = random.sample(pats, amount)
+    return perc_pats
+
+
+def get_patient_perc_split(total_imgs, total_masks, pats, perc):
+    images = []
+    masks = []
+    img_slices = []
+    mask_slices = []
+    min_length = min([len(total_imgs[i]) for i in range(len(total_imgs))])
+    for patient in pats:
+        amount = max(int(perc * min_length), 1)
+        if perc - amount / min_length >= 0.5 * 1 / min_length:
             amount += 1
-        random.seed(seed)
-        ind = random.sample(range(len(images)), amount)
-        temp_imgs = []
-        temp_masks = []
-        for k in range(len(ind)):
-            temp_imgs.append(images[k])
-            temp_masks.append(masks[k])
-        images_dict[i] = temp_imgs
-        masks_dict[i] = temp_masks
+        indices = random.sample(range(min_length), amount)
+        for index in indices:
+            img_slices.append(total_imgs[patient][index])
+            mask_slices.append(total_masks[patient][index])
 
-    for j in range(len(images_dict)):
-        split_dicts[str(data_percs[j]) + "Perc"] = get_splits(images_dict[j], masks_dict[j], splits, seed)
-
-    return split_dicts
+    for slice in img_slices:
+        images.append(slice)
+    for slice in mask_slices:
+        masks.append(slice)
+    return np.array(images, dtype=float), np.array(masks, dtype=float)
 
 
 def getdicescore(result, reference):
@@ -148,7 +124,7 @@ def getdicescore(result, reference):
     return dc
 
 
-def dice_coef(y_true, y_pred, smooth=1):
+def dice_coeff(y_true, y_pred, smooth=1):
     """
     Dice = (2*|X & Y|)/ (|X|+ |Y|)
          =  2*sum(|A*B|)/(sum(A^2)+sum(B^2))
@@ -158,8 +134,8 @@ def dice_coef(y_true, y_pred, smooth=1):
     return (2. * intersection + smooth) / (K.sum(y_true, -1) + K.sum(K.square(y_pred), -1) + smooth)
 
 
-def dice_coef_loss(y_true, y_pred):
-    return 1-dice_coef(y_true, y_pred)
+def dice_coeff_loss(y_true, y_pred):
+    return 1-dice_coeff(y_true, y_pred)
 
 
 def weighted_cross_entropy(y_true, y_pred, beta=0.7):
@@ -177,7 +153,7 @@ def weighted_cross_entropy(y_true, y_pred, beta=0.7):
 
   return loss(y_true, y_pred)
 
-
+'''
 def collectimages(mylist):
     data = []
     for patient in range(len(mylist)):
@@ -198,7 +174,7 @@ def getpatpercs(images, masks, patperc):
         new_imgs.append(temp_imgs)
         new_masks.append(temp_masks)
     return new_imgs, new_masks
-
+'''
 def matthews_coeff(y_true, y_pred):
     y_pred = tf.convert_to_tensor(y_pred, np.float32)
     y_true = tf.convert_to_tensor(y_true, np.float32)
