@@ -94,9 +94,9 @@ for split in splits:
                         test_pats = get_total_perc_pats(test_pats, 1)
                         val_pats = get_total_perc_pats(val_pats, 1)
 
-                        train_images, train_masks = get_patient_perc_split(pgm_images, pgm_masks, train_pats, patient_perc)
-                        test_images, test_masks = get_patient_perc_split(pgm_images, pgm_masks, test_pats, 1)
-                        val_images, val_masks = get_patient_perc_split(pgm_images, pgm_masks, val_pats, 1)
+                        train_images, train_masks = get_patient_perc_split(pgm_images, pgm_masks, train_pats, patient_perc, False)
+                        test_images, test_masks = get_patient_perc_split(pgm_images, pgm_masks, test_pats, 1, True)
+                        val_images, val_masks = get_patient_perc_split(pgm_images, pgm_masks, val_pats, 1, False)
 
                         input_size = train_images.shape[1:4]
 
