@@ -91,7 +91,7 @@ def get_patient_perc_split(total_imgs, total_masks, pats, perc, test):
     img_slices = []
     mask_slices = []
     for patient in pats:
-        total_slices = len(total_imgs[patient]
+        total_slices = len(total_imgs[patient])
         amount = max(int(perc * total_slices), 1)
         if perc - amount / total_slices >= 0.5 * 1 / total_slices:
             amount += 1
