@@ -99,16 +99,24 @@ def get_patient_perc_split(total_imgs, total_masks, pats, perc, test):
         for index in indices:
             img_slices.append(total_imgs[patient][index])
             mask_slices.append(total_masks[patient][index])
-        if test:
-            images.append(np.array(img_slices, dtype=float))
-            masks.append(np.array(mask_slices, dtype=float))
-    if not test:
+        print(np.array(img_slices, dtype=float).shape, "img_slices")
+        print(np.array(mask_slices, dtype=float).shape, "mask_slices")
+    if test:
+        images.append(np.array(img_slices, dtype=float))
+        masks.append(np.array(mask_slices, dtype=float))
+        print(len(images), "images")
+        print(len(masks), "masks")
+        print(images[0].shape, "images[0].shape")
+        print(masks[0].shape, "masks[0].shape")
+    else:
         for slice in img_slices:
             images.append(slice)
         images = np.array(images, dtype=float)
         for slice in mask_slices:
             masks.append(slice)
         masks = np.array(masks, dtype=float)
+        print(images.shape, "images.shape")
+        print(masks.shape, "masks.shape")
     return images, masks
 
 
