@@ -3,15 +3,17 @@ import random
 import keras.backend as K
 import tensorflow as tf
 import imageio
+import math
 import sklearn
+from medpy.metric.binary import dc, hd
 
 
-def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels, score, score_name, save_folder):
+def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels,  median_dice_score, median_rounded_dice_score, median_hausdorff, median_thresholded_hausdorff, save_folder):
     counter = 0
-    img_data = np.moveaxis(img_data, -1, 0)
-    myocar_labels = np.moveaxis(myocar_labels, -1, 0)
-    predicted_labels = np.moveaxis(predicted_labels, -1, 0)
-    rounded_labels = np.moveaxis(rounded_labels, -1, 0)
+    img_data = np.expand_dims(img_data, 0)
+    myocar_labels = np.expand_dims(myocar_labels, 0)
+    predicted_labels = np.expand_dims(predicted_labels, 0)
+    rounded_labels = np.expand_dims(rounded_labels, 0)
     for i, j, k, l in zip(img_data, myocar_labels, predicted_labels, rounded_labels):
         i_patch = i[0, :, :]*255
         j_patch = j[0, :, :]*255
@@ -23,9 +25,9 @@ def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels
             k_patch = np.hstack((k_patch, k[slice, :, :]*255))
             l_patch = np.hstack((l_patch, l[slice, :, :]*255))
         image = np.vstack((i_patch, j_patch, k_patch, l_patch))
-        imageio.imwrite(save_folder + '%s_%s.png' % (score,score_name), image)
+        imageio.imwrite(save_folder + '%s_dice_%s_roundeddice_%s_hd_%s_roundedhd.png' % (median_dice_score, median_rounded_dice_score, median_hausdorff, median_thresholded_hausdorff), image)
         counter = counter + 1
-        print("Done visualising at", save_folder, '%s_%s.png' % (score, score_name))
+        print("Done visualising at", save_folder, '%s_dice_%s_roundeddice_%s_hd_%s_roundedhd.png' % (median_dice_score, median_rounded_dice_score, median_hausdorff, median_thresholded_hausdorff))
 
 
 def get_patient_split(pats_amount, split):
@@ -88,35 +90,25 @@ def get_total_perc_pats(pats, perc):
 def get_patient_perc_split(total_imgs, total_masks, pats, perc, test):
     images = []
     masks = []
-    img_slices = []
-    mask_slices = []
+
     for patient in pats:
+
         total_slices = len(total_imgs[patient])
         amount = max(int(perc * total_slices), 1)
+
         if perc - amount / total_slices >= 0.5 * 1 / total_slices:
             amount += 1
+
         indices = random.sample(range(total_slices), amount)
+
         for index in indices:
-            img_slices.append(total_imgs[patient][index])
-            mask_slices.append(total_masks[patient][index])
-        print(np.array(img_slices, dtype=float).shape, "img_slices")
-        print(np.array(mask_slices, dtype=float).shape, "mask_slices")
-    if test:
-        images.append(np.array(img_slices, dtype=float))
-        masks.append(np.array(mask_slices, dtype=float))
-        print(len(images), "images")
-        print(len(masks), "masks")
-        print(images[0].shape, "images[0].shape")
-        print(masks[0].shape, "masks[0].shape")
-    else:
-        for slice in img_slices:
-            images.append(slice)
-        images = np.array(images, dtype=float)
-        for slice in mask_slices:
-            masks.append(slice)
-        masks = np.array(masks, dtype=float)
-        print(images.shape, "images.shape")
-        print(masks.shape, "masks.shape")
+
+            images.append(total_imgs[patient][index])
+            masks.append(total_masks[patient][index])
+
+    images = np.array(images, dtype=float)
+    masks = np.array(masks, dtype=float)
+
     return images, masks
 
 
@@ -144,7 +136,7 @@ def dice_coeff(y_true, y_pred, smooth=1):
     ref: https://arxiv.org/pdf/1606.04797v1.pdf
     """
     intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
-    return (2. * intersection + smooth) / (K.sum(y_true, -1) + K.sum(K.square(y_pred), -1) + smooth)
+    return (2. * intersection + smooth) / (K.sum(y_true, -1) + K.sum(y_pred, -1) + smooth)
 
 
 def dice_coeff_loss(y_true, y_pred):
@@ -206,6 +198,6 @@ def matthews_coeff(y_true, y_pred):
 
 def threshold(images, upper, lower):
     images = np.array(images)
-    images[images > upper] = 1
+    images[images >= upper] = 1
     images[images < lower] = 0
     return images
