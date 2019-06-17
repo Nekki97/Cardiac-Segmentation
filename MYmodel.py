@@ -3,21 +3,21 @@ from keras.layers import *
 from keras.optimizers import *
 from functions import *
 
-def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_weights=None):
+def param_unet(input_size, filters, levels, dropout_rate, loss_name, pretrained_weights=None):
     inputs = Input(input_size)
-    conv_down = np.empty(layers, dtype=object)
-    conv_up = np.empty(layers, dtype=object)
+    conv_down = np.empty(levels, dtype=object)
+    conv_up = np.empty(levels, dtype=object)
     temp = inputs
-    for i in range(layers):
+    for i in range(levels):
         conv_down[i] = Conv2D(filters * 2**i, 3, activation='relu', padding='same', kernel_initializer='he_normal')(temp)
         conv_down[i] = Conv2D(filters * 2**i, 3, activation='relu', padding='same', kernel_initializer='he_normal')(conv_down[i])
         conv_down[i] = Dropout(dropout_rate)(conv_down[i])
-        if i < layers-1:
+        if i < levels-1:
             temp = MaxPooling2D(pool_size=(2, 2))(conv_down[i])
 
-    temp = conv_down[layers-1]
+    temp = conv_down[levels-1]
 
-    for j in range(layers-2, -1, -1):
+    for j in range(levels-2, -1, -1):
         conv_up[j]= Conv2D(filters * 2 ** j, 2, activation='relu', padding='same', kernel_initializer='he_normal')(
             UpSampling2D(size=(2, 2))(temp))
         conv_up[j] = concatenate([conv_up[j], conv_down[j]], axis=3)
@@ -46,7 +46,6 @@ def param_unet(input_size, filters, layers, dropout_rate, loss_name, pretrained_
 
 
 def segnet(img_shape, kernel_size, Dropout_rate, loss_name):
-    inputs = Input(img_shape)
     model = Sequential()
 
     # Encoder Layers
@@ -140,7 +139,5 @@ def segnet(img_shape, kernel_size, Dropout_rate, loss_name):
 if __name__ == '__main__':      #only gets called if functions.py is run
 
     model = param_unet((128,128,1), 64, 5, 0.5, "binary_crossentropy")
-
     from keras.utils import plot_model
-
-    plot_model(model, to_file='Desktop/param_unet.svg', show_shapes=True)
+    plot_model(model, to_file='D:/MEINE_DATEN/Desktop/results/model1.svg', show_shapes=False)
