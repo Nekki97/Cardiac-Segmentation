@@ -156,7 +156,6 @@ def remove_empty_label_data(data, empty_labels):
     for i in np.asarray(empty_labels):
         new_empty.append([i[0],i[1]])
 
-    new_i = []
     new_data = []
     for i in range(len(data)):
         new_i = []
@@ -195,6 +194,14 @@ def data_normalization(data):
     return data
 
 
+def remove_bad_images(data):
+    indices = [(10, 12), (6, 12), (10, 16), (8, 14), (6, 12), (8, 8), (6,18), (6, 14), (6, 12), (10, 14), (10, 12), (6,10), (10, 16), (6, 14), (6, 10), (6, 10), (6, 18), (6, 14), (6, 12), (8, 14), (10, 12), (4, 10), (10, 16), (14, 10), (12, 14), (12, 16), (6, 16), (8, 16), (8, 14), (14, 18)]
+
+    new_data = []
+    for i in range(len(data)):
+        new_data.append(
+            data[i][indices[i][0]:(len(data[i])-indices[i][1])])
+    return new_data
 
 def get_nii_data():
 
@@ -218,22 +225,33 @@ def get_nii_data():
     images = remove_empty_label_data(images, emptymasks)
 
     print("before cropping")
-    images = crop_images(100, coms, images)
-    masks = crop_images(100, coms, masks)
+    images = crop_images(128, coms, images)
+    masks = crop_images(128, coms, masks)
     print("after cropping")
 
     print("before normalizing")
     images = data_normalization(images)
     print("after normalizing")
 
+    print("before removing bad images")
+    images = remove_bad_images(images)
+    masks = remove_bad_images(masks)
 
+    print("Done getting data")
     return images, masks
 
 
 
-#masks = data_normalization(masks)
+#(images, masks) = get_nii_data()
+#data_images = []
+#data_masks = []
 #counter = 0
-#for patient in range(len(images)):
-#    save_datavisualisation2(images[patient], masks[patient], "nii_data/visualize/", counter, normalized=True)
+#for i in range(len(images)):
+#    data_images.append(np.expand_dims(images[i], -1))
+#for i in range(len(masks)):
+#    data_masks.append(np.expand_dims(masks[i], -1))
+
+#for patient in range(len(data_images)):
+#    save_datavisualisation2(data_images[patient], data_masks[patient], "nii_data/visualize/", counter, normalized=True)
 #    counter += 1
 #print("Visualized data")
