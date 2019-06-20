@@ -54,18 +54,18 @@ def reset_keras():
 
 filters = 64
 dropout_rate = 0.5
-cropper_size = 64 # --> 128x128 after padding
 
 whichmodels = ['param_unet']
 splits = {1:(0.3,0.1)}
 
 maxepochs = 500
 basic_batch_size = 24
-seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+seeds = [1,2,3,4,5,6,7,8,9,10,11,12]
 data_percs = [1, 0.75, 0.5, 0.25] # PERCENTAGE OF PEOPLE (TOTAL DATA)
-levels_arr = [2, 3, 4]
+levels_arr = [4]
 loss_funcs = ["binary_crossentropy"]
-patient_percs = [1, 0.75, 0.5, 0.25]
+patient_percs = [0.75, 0.5, 0.25]
+dataset = 'pgm'
 
 all_results = []
 
@@ -88,8 +88,16 @@ for whichmodel in whichmodels:
                             tf.set_random_seed(seed)
                             os.environ['PYTHONHASHSEED'] = str(seed)
 
-                            (data_images, data_masks) = pgm.get_data(cropper_size)
-                            #(data_images, data_masks) = nii.get_nii_data()
+                            if dataset == 'pgm':
+                                (data_images, data_masks) = pgm.get_data()
+                            if dataset == 'nii':
+                                (images, masks) = nii.get_nii_data()
+                                data_images = []
+                                data_masks = []
+                                for i in range(len(images)):
+                                    data_images.append(np.expand_dims(images[i], -1))
+                                for i in range(len(masks)):
+                                    data_masks.append(np.expand_dims(masks[i], -1))
 
                             train_pats, test_pats, val_pats = get_patient_split(len(data_images), splits.get(split))
 
@@ -176,7 +184,7 @@ for whichmodel in whichmodels:
 
                             plt.close()
 
-                            rounded_pred = threshold(mask_prediction, 0.55, 0.45)
+                            rounded_pred = threshold(mask_prediction, 0.5, 0.5)
                             rounded_pred = np.squeeze(rounded_pred, 3)
                             mask_prediction = np.array(mask_prediction)
                             mask_prediction = np.squeeze(mask_prediction, 3)
