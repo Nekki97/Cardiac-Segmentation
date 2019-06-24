@@ -58,6 +58,7 @@ patient_percs = [1, 0.75, 0.5, 0.25]
 levels_arr = [5, 4, 3, 2]
 slice_percs = [1, 0.75, 0.5, 0.25]
 datasets = ['pgm']
+min_val_loss = 1e-3
 data_augm = False
 
 
@@ -163,11 +164,11 @@ for whichmodel in whichmodels:
                                 loss.append(history.history['loss'][0])
                                 val_loss.append(history.history['val_loss'][0])
 
-                                # ********************* Early Stopping if no improvement (min. 1e-3) after val_loss_patience ******************************
+                                # ********************* Early Stopping if no improvement bigger than min_val_loss after val_loss_patience ******************************
 
                                 new_val_loss = round(history.history['val_loss'][0],4)
                                 diff = round(best_val_loss - new_val_loss,4)
-                                if diff > 1e-3:
+                                if diff > min_val_loss:
                                     print("New best loss. Improvement of", -diff)
                                     best_val_loss = new_val_loss
                                     loss_counter = 0
