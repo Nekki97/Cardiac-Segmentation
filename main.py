@@ -46,28 +46,22 @@ filters = 64
 dropout_rate = 0.5
 whichmodels = ['param_unet']
 split = (0.3,0.1)
+maxepochs = 500
 basic_batch_size = 24
 val_loss_patience = 30
-gray_images_patience = 1
-maxepochs = 500
-amount_of_non_gray_predictions = 4
-#**************************** Main Parameters *****************************
-patient_percs = [1, 0.75, 0.5, 0.25]
-levels_arr = [5, 4, 3, 2]
-slice_percs = [1, 0.75, 0.5, 0.25]
-datasets = ['pgm']
+gray_images_patience = 3
+amount_of_non_gray_splits = 4
 min_val_loss = 1e-3
+
+
+#**************************** Main Parameters *****************************
+patient_percs = [1]
+levels_arr = [4]
+datasets = ['pgm']
 data_augm = False
 testing = False
 
 
-# ****************** Testing Parameter Changes *********************
-if testing: # override settings to minimal if testing
-    amount_of_non_gray_predictions = 1
-    patient_percs = [0.25]
-    levels_arr = [1]
-    slice_percs = [0.25]
-    
 #************************** Data Augmentation Parameters *************************************
 single_param = False # tests all data augm param one by one ... only works if data_augm also True
 rotation_range = 30
@@ -79,30 +73,78 @@ vertical_flip = 1
 data_gen_args_list = get_args_list(data_augm, single_param, rotation_range, width_shift_range, height_shift_range, zoom_range, horizontal_flip, vertical_flip)
 
 
+# **************************** Testing Parameter Overrides ********************************
+if testing: # override settings to minimal if testing
+    amount_of_non_gray_predictions = 1
+    patient_percs = [0.1]
+    levels_arr = [1]
+    slice_percs = [0.1]
 
 
 times = []
 
 for whichmodel in whichmodels:
-    if whichmodel == 'segnet':
+    if whichmodel == 'segnet': # if testing both param_unet and segnet, put segnet second
         levels_arr = [0]
+
     for dataset in datasets:
+
+        # ********************************* Get all data ************************************
+        if dataset == 'pgm':
+            (data_images, data_masks) = pgm.get_data()
+        elif dataset == 'nii':
+            (images, masks) = nii.get_nii_data()
+            data_images = []
+            data_masks = []
+            for i in range(len(images)):
+                data_images.append(np.expand_dims(images[i], -1))
+            for i in range(len(masks)):
+                data_masks.append(np.expand_dims(masks[i], -1))
+        else:
+            print("Can't recognize dataset")
+            data_images = []
+            data_masks = []
+
+        train_pats, test_pats, val_pats = get_patient_split(len(data_images), split)
+
+        # ********************************** Get test/val datasets ****************************************
+        # make sure no sources of randomness are in test/val set, so that the results are easily comparable
+        test_pats = get_total_perc_pats(test_pats, 1, train=False)
+        val_pats = get_total_perc_pats(val_pats, 1, train=False)
+
+        test_images, test_masks = get_slice_perc_split(data_images, data_masks, test_pats, 1, train=False)
+        val_images, val_masks = get_slice_perc_split(data_images, data_masks, val_pats, 1, train=False)
+
         for levels in levels_arr:
             if levels > 4:
                 batch_size = int((0.5**(levels-4))*basic_batch_size)
             else:
                 batch_size = basic_batch_size
+
             for patient_perc in patient_percs:
                 if patient_perc != 1:
                     slice_percs = [1]
-                for slice_perc in slice_percs:
-                    for args in data_gen_args_list:
-                        non_gray_images = 0
-                        seed = 0
-                        while non_gray_images != amount_of_non_gray_predictions: # make sure (amount_of_splits) non-gray images are saved
-                            seed += 1
+                else:
+                    if not testing:
+                        slice_percs = [0.75, 0.5, 0.25]
+                    else:
+                        slice_percs = [0.25]
 
+                for slice_perc in slice_percs:
+
+                    for args in data_gen_args_list:
+
+                        non_gray_images = 0
+                        seed = 10
+                        while non_gray_images != amount_of_non_gray_splits: # make sure (amount_of_splits) non-gray images are saved
+                            seed += 1
                             total_start_time = time.time()
+
+                            # ************************** Get training dataset ***************************
+                            train_pats = get_total_perc_pats(train_pats, patient_perc, train=True)
+                            train_images, train_masks = get_slice_perc_split(data_images, data_masks, train_pats,
+                                                                             slice_perc, train=True)
+
 
                             # ****************************** Seed all sources of randomness ***************************
                             reset_keras()
@@ -112,8 +154,6 @@ for whichmodel in whichmodels:
                             os.environ['PYTHONHASHSEED'] = str(seed)
 
                             # *********************************** Get Data ****************************
-                            train_images, train_masks, val_images, val_masks, test_images, test_masks = get_all_data(dataset, split, patient_perc, slice_perc)
-
                             prefix = ''
                             if data_augm:
                                 train_generator, x_augm_save_dir, prefix, augm_count_before = get_train_generator(
@@ -183,14 +223,14 @@ for whichmodel in whichmodels:
                                     print("No best loss since", loss_counter, "epochs")
                                     if loss_counter == val_loss_patience:
                                         print("Too many epochs without validation loss improvement")
-                                        epochs = i+1
                                         print("---------------------------------------------------")
+                                        epochs = i + 1
                                         break
 
                                 # ******************* Early Stopping if difference between max and min value of prediction less than 0.1 (=gray image) after gray_image_patience **************************
-                                test_image = test_images[0,:,:,:]
+                                test_image = test_images[0, :, :, :]
                                 test_image = np.expand_dims(test_image, 0)
-                                
+
                                 mask_prediction = model.predict(test_image, verbose=0)
 
                                 minima = []
@@ -212,7 +252,10 @@ for whichmodel in whichmodels:
                                         print("---------------------------------------------------")
                                         epochs = i + 1
                                         break
-
+                                if i+1 == maxepochs:
+                                    print("Reached the end of maxepochs")
+                                    print("---------------------------------------------------")
+                                    epochs = maxepochs
 
                             # ************************** Continue only if image is not gray *********************************
 
@@ -220,8 +263,7 @@ for whichmodel in whichmodels:
                                 non_gray_images += 1
 
                                 if data_augm:
-                                    augm_count_after = add_count(x_augm_save_dir)
-                                    augm_count = augm_count_after - augm_count_before
+                                    augm_count = add_count(x_augm_save_dir)
 
 
                                 path = dataset + "_results/new/" + \
@@ -278,7 +320,7 @@ for whichmodel in whichmodels:
                                 plt.close()
 
                                 mask_prediction = model.predict(test_images, verbose=0)
-                                
+
                                 rounded_pred = threshold(mask_prediction, 0.5, 0.5)
                                 rounded_pred = np.squeeze(rounded_pred, 3)
                                 mask_prediction = np.array(mask_prediction)
@@ -289,25 +331,24 @@ for whichmodel in whichmodels:
                                 np.save(os.path.join(save_dir, str(epochs) + 'test_masks'), test_masks)
                                 np.save(os.path.join(save_dir, str(epochs) + 'rounded_mask_pred'), rounded_pred)
 
-
+                                mask_prediction = model.predict(test_images, verbose=0)
+                                mask_prediction = np.squeeze(mask_prediction, 3)
 
                                 rounded_dice = []
                                 dice = []
                                 thresholded_hausdorff = []
                                 hausdorff = []
                                 for s in range(test_masks.shape[0]):
-                                        rounded_dice.append(getdicescore(test_masks[s, :, :, 0], rounded_pred[s, :, :]))
-                                        dice.append(getdicescore(test_masks[s, :, :, 0], mask_prediction[s, :, :]))
-                                        if np.max(rounded_pred[s, :, :]) != 0:
-                                            thresholded_hausdorff.append(hd(rounded_pred[s, :, :], test_masks[s, :, :, 0]))
-                                        if np.max(rounded_pred[s, :, :]) != 0:
-                                            hausdorff.append(hd(rounded_pred[s, :, :], test_masks[s, :, :, 0]))
+                                    rounded_dice.append(getdicescore(test_masks[s, :, :, 0], rounded_pred[s, :, :]))
+                                    if np.max(rounded_pred[s, :, :]) != 0:
+                                        thresholded_hausdorff.append(hd(rounded_pred[s, :, :], test_masks[s, :, :, 0]))
 
                                 median_rounded_dice_score = np.median(rounded_dice)
                                 median_thresholded_hausdorff = np.mean(thresholded_hausdorff)
 
                                 median_thresholded_hausdorff = round(median_thresholded_hausdorff, 2)
                                 median_rounded_dice_score = round(median_rounded_dice_score, 3)
+
 
 
 
@@ -327,8 +368,9 @@ for whichmodel in whichmodels:
                                 seconds = elapsed_time - hours*3600 - minutes*60
                                 print('ELAPSED TIME:', hours,"hours", minutes, "minutes", seconds, "seconds")
                                 print("****************************************************************************************************************")
-                                times.append((patient_perc, "% of patients,", slice_perc, "% of slices,", levels, "levels:", elapsed_time))
+                                times.append((patient_perc, "% of patients,", slice_perc, "% of slices,", levels, "levels:", hours, "hours", minutes, "minutes", seconds, "seconds"))
                                 if data_augm:
                                     print("AUGMENTED DATA SIZE:", augm_count)
                                     print("****************************************************************************************************************")
-print(times)
+for time in times:
+    print(time)
