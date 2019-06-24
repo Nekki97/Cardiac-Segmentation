@@ -143,7 +143,7 @@ for whichmodel in whichmodels:
                             loss = []
                             val_loss = []
                             for i in range(maxepochs):
-                                print("--------------------Epoch #", i+1,"--------------------")
+                                print("-------------------- Epoch #", i+1,"--------------------")
                                 start_time = time.time()
                                 if data_augm:
                                     history = model.fit_generator(train_generator, epochs=1,
