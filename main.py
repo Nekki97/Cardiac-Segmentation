@@ -50,7 +50,7 @@ maxepochs = 500
 basic_batch_size = 24
 val_loss_patience = 30
 gray_images_patience = 5
-amount_of_splits = 4
+amount_of_non_gray_predictions = 4
 
 
 #**************************** Main Parameters *****************************
@@ -93,7 +93,7 @@ for whichmodel in whichmodels:
                     for args in data_gen_args_list:
                         non_gray_images = 0
                         seed = 0
-                        while non_gray_images != amount_of_splits: # make sure (amount_of_splits) non-gray images are saved
+                        while non_gray_images != amount_of_non_gray_predictions: # make sure (amount_of_splits) non-gray images are saved
                             seed += 1
 
                             total_start_time = time.time()
