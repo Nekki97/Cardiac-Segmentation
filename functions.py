@@ -3,12 +3,14 @@ import random
 import keras.backend as K
 import tensorflow as tf
 import imageio
-import math
-import sklearn
-from medpy.metric.binary import dc, hd
+import os
+import PGM_Loader_new as pgm
+import NII_loader as nii
+import keras.preprocessing as kp
 
 
-def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels,  median_dice_score, median_rounded_dice_score, median_hausdorff, median_thresholded_hausdorff, save_folder):
+
+def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels, median_rounded_dice_score, median_thresholded_hausdorff, prefix, save_folder):
     counter = 0
     img_data = np.expand_dims(img_data, 0)
     myocar_labels = np.expand_dims(myocar_labels, 0)
@@ -25,9 +27,25 @@ def save_visualisation(img_data, myocar_labels, predicted_labels, rounded_labels
             k_patch = np.hstack((k_patch, k[slice, :, :]*255))
             l_patch = np.hstack((l_patch, l[slice, :, :]*255))
         image = np.vstack((i_patch, j_patch, k_patch, l_patch))
-        imageio.imwrite(save_folder + '%s_dice_%s_roundeddice_%s_hd_%s_roundedhd.png' % (median_dice_score, median_rounded_dice_score, median_hausdorff, median_thresholded_hausdorff), image)
+        imageio.imwrite(save_folder + '%s%s_roundeddice_%s_roundedhd.png' % (prefix, median_rounded_dice_score, median_thresholded_hausdorff), image)
         counter = counter + 1
-        print("Done visualising at", save_folder, '%s_dice_%s_roundeddice_%s_hd_%s_roundedhd.png' % (median_dice_score, median_rounded_dice_score, median_hausdorff, median_thresholded_hausdorff))
+        #print("Done visualising at", save_folder, '%s_%s_roundeddice_%s_roundedhd.png' % (prefix, median_rounded_dice_score, median_thresholded_hausdorff))
+
+
+def save_visualisation2(img_data, myocar_labels, median_rounded_dice_score, median_thresholded_hausdorff, save_folder):
+    counter = 0
+    img_data = np.expand_dims(img_data, 0)
+    myocar_labels = np.expand_dims(myocar_labels, 0)
+    for i, j in zip(img_data, myocar_labels):
+        i_patch = i[0, :, :]*255
+        j_patch = j[0, :, :]*255
+        for slice in range(1, i.shape[0]):
+            i_patch = np.hstack((i_patch, i[slice, :, :]*255))
+            j_patch = np.hstack((j_patch, j[slice, :, :]*255))
+        image = np.vstack((i_patch, j_patch))
+        imageio.imwrite(save_folder + 'training_data_%s_roundeddice_%s_roundedhd.png' % (median_rounded_dice_score, median_thresholded_hausdorff), image)
+        counter = counter + 1
+        #print("Done visualising at", save_folder, 'training_data_%s_roundeddice_%s_roundedhd.png' % (median_rounded_dice_score, median_thresholded_hausdorff))
 
 
 def get_patient_split(pats_amount, split):
@@ -87,7 +105,7 @@ def get_total_perc_pats(pats, perc):
     return perc_pats
 
 
-def get_patient_perc_split(total_imgs, total_masks, pats, perc, test):
+def get_slice_perc_split(total_imgs, total_masks, pats, perc, test):
     images = []
     masks = []
 
@@ -158,6 +176,7 @@ def weighted_cross_entropy(y_true, y_pred, beta=0.7):
 
   return loss(y_true, y_pred)
 
+
 '''
 def collectimages(mylist):
     data = []
@@ -180,6 +199,8 @@ def getpatpercs(images, masks, patperc):
         new_masks.append(temp_masks)
     return new_imgs, new_masks
 '''
+
+
 def matthews_coeff(y_true, y_pred):
     y_pred = tf.convert_to_tensor(y_pred, np.float32)
     y_true = tf.convert_to_tensor(y_true, np.float32)
@@ -201,3 +222,150 @@ def threshold(images, upper, lower):
     images[images >= upper] = 1
     images[images < lower] = 0
     return images
+
+def add_count(path):
+    count = 0
+    for root, subdirList, fileList in os.walk(path):
+        for file in fileList:
+            count += 1
+    return count
+
+
+
+def get_all_data(dataset, split, patient_perc, slice_perc):
+    if dataset == 'pgm':
+        (data_images, data_masks) = pgm.get_data()
+    if dataset == 'nii':
+        (images, masks) = nii.get_nii_data()
+        data_images = []
+        data_masks = []
+        for i in range(len(images)):
+            data_images.append(np.expand_dims(images[i], -1))
+        for i in range(len(masks)):
+            data_masks.append(np.expand_dims(masks[i], -1))
+
+    train_pats, test_pats, val_pats = get_patient_split(len(data_images), split)
+
+    train_pats = get_total_perc_pats(train_pats, patient_perc)
+    test_pats = get_total_perc_pats(test_pats, 1)
+    val_pats = get_total_perc_pats(val_pats, 1)
+
+    train_images, train_masks = get_slice_perc_split(data_images, data_masks, train_pats, slice_perc, False)
+    test_images, test_masks = get_slice_perc_split(data_images, data_masks, test_pats, 1, True)
+    val_images, val_masks = get_slice_perc_split(data_images, data_masks, val_pats, 1, False)
+
+    return train_images, train_masks, val_images, val_masks, test_images, test_masks
+
+
+def get_args_list(data_augm, single_param, rotation_range, width_shift_range, height_shift_range, zoom_range, horizontal_flip, vertical_flip):
+    data_gen_args_list = []
+    if data_augm:
+        data_gen_args = dict(rotation_range=rotation_range,
+                             width_shift_range=width_shift_range,
+                             height_shift_range=height_shift_range,
+                             zoom_range=zoom_range,
+                             horizontal_flip=horizontal_flip,
+                             vertical_flip=vertical_flip)
+        if single_param:
+            for augm_param in data_gen_args.keys():
+                empty_args = dict(rotation_range=0,
+                                  width_shift_range=0,
+                                  height_shift_range=0,
+                                  zoom_range=0,
+                                  horizontal_flip=0,
+                                  vertical_flip=0)
+                value = data_gen_args.get(augm_param)
+                if value != 0:
+                    new_empty_args = empty_args
+                    new_empty_args[augm_param] = value
+                    data_gen_args_list.append(new_empty_args)
+        else:
+            data_gen_args_list.append(data_gen_args)
+    else:
+        data_gen_args_list.append(1)
+    return data_gen_args_list
+
+
+def get_train_generator(data_gen_args, train_images, train_masks, val_images, val_masks, seed, single_param, batch_size, dataset):
+
+    for root, dirs, files in os.walk("pgm_results/augmented_data"):
+        for f in files:
+            os.unlink(os.path.join(root, f))
+    for root, dirs, files in os.walk("nii_results/augmented_data"):
+        for f in files:
+            os.unlink(os.path.join(root, f))
+
+    rotation_range = data_gen_args.get("rotation_range")
+    width_shift_range = data_gen_args.get("width_shift_range")
+    height_shift_range = data_gen_args.get("height_shift_range")
+    zoom_range = data_gen_args.get("zoom_range")
+    horizontal_flip = data_gen_args.get("horizontal_flip")
+    vertical_flip = data_gen_args.get("vertical_flip")
+
+    image_datagen = kp.image.ImageDataGenerator(**data_gen_args)
+    mask_datagen = kp.image.ImageDataGenerator(**data_gen_args)
+    # compute quantities required for featurewise normalization
+    # (std, mean, and principal components if ZCA whitening is applied)
+    image_datagen.fit(train_images, augment=True, seed=seed)
+    mask_datagen.fit(train_masks, augment=True, seed=seed)
+
+    augm_count = 0
+
+    prefix = ''
+    if single_param:
+        if rotation_range != 0:
+            dir = dataset + "_results/augmented_data/rotation/"
+            save_prefix = str(rotation_range)
+        if width_shift_range != 0:
+            dir = dataset + "_results/augmented_data/width_shift/"
+            save_prefix = str(width_shift_range)
+        if height_shift_range != 0:
+            dir = dataset + "_results/augmented_data/height_shift/"
+            save_prefix = str(height_shift_range)
+        if zoom_range != 0:
+            dir = dataset + "_results/augmented_data/zoom/"
+            save_prefix = str(zoom_range)
+        if horizontal_flip:
+            dir = dataset + "_results/augmented_data/horizontal_flip/"
+            save_prefix = ''
+        if vertical_flip:
+            dir = dataset + "_results/augmented_data/vertical_flip/"
+            save_prefix = ''
+        x_augm_save_dir = dir + "images/"
+        y_augm_save_dir = dir + "masks/"
+    else:
+        x_augm_save_dir = dataset + "_results/augmented_data/all/images/"
+        y_augm_save_dir = dataset + "_results/augmented_data/all/masks/"
+        save_prefix = ''
+
+    if rotation_range != 0:
+        prefix += 'r-'
+    if width_shift_range != 0:
+        prefix += 'ws-'
+    if height_shift_range != 0:
+        prefix += 'hs-'
+    if zoom_range != 0:
+        prefix += 'z-'
+    if horizontal_flip:
+        prefix += 'hf-'
+    if vertical_flip:
+        prefix += 'vf-'
+
+    image_generator = image_datagen.flow(
+        train_images,
+        seed=seed,
+        save_to_dir=x_augm_save_dir, save_prefix=save_prefix,
+        batch_size=batch_size)
+
+    mask_generator = mask_datagen.flow(
+        train_masks,
+        seed=seed,
+        save_to_dir=y_augm_save_dir, save_prefix=save_prefix,
+        batch_size=batch_size)
+
+    train_generator = zip(image_generator, mask_generator)
+
+    augm_count_before = add_count(x_augm_save_dir)
+
+    return train_generator, x_augm_save_dir, prefix, augm_count_before
+
