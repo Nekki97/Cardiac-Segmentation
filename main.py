@@ -46,13 +46,11 @@ filters = 64
 dropout_rate = 0.5
 whichmodels = ['param_unet']
 split = (0.3,0.1)
-maxepochs = 500
 basic_batch_size = 24
 val_loss_patience = 30
-gray_images_patience = 5
+gray_images_patience = 1
+maxepochs = 500
 amount_of_non_gray_predictions = 4
-
-
 #**************************** Main Parameters *****************************
 patient_percs = [1, 0.75, 0.5, 0.25]
 levels_arr = [5, 4, 3, 2]
@@ -60,8 +58,16 @@ slice_percs = [1, 0.75, 0.5, 0.25]
 datasets = ['pgm']
 min_val_loss = 1e-3
 data_augm = False
+testing = False
 
 
+# ****************** Testing Parameter Changes *********************
+if testing: # override settings to minimal if testing
+    amount_of_non_gray_predictions = 1
+    patient_percs = [0.25]
+    levels_arr = [1]
+    slice_percs = [0.25]
+    
 #************************** Data Augmentation Parameters *************************************
 single_param = False # tests all data augm param one by one ... only works if data_augm also True
 rotation_range = 30
@@ -182,8 +188,10 @@ for whichmodel in whichmodels:
                                         break
 
                                 # ******************* Early Stopping if difference between max and min value of prediction less than 0.1 (=gray image) after gray_image_patience **************************
-
-                                mask_prediction = model.predict(test_images, verbose=0)
+                                test_image = test_images[0,:,:,:]
+                                test_image = np.expand_dims(test_image, 0)
+                                
+                                mask_prediction = model.predict(test_image, verbose=0)
 
                                 minima = []
                                 maxima = []
@@ -269,6 +277,8 @@ for whichmodel in whichmodels:
 
                                 plt.close()
 
+                                mask_prediction = model.predict(test_images, verbose=0)
+                                
                                 rounded_pred = threshold(mask_prediction, 0.5, 0.5)
                                 rounded_pred = np.squeeze(rounded_pred, 3)
                                 mask_prediction = np.array(mask_prediction)
