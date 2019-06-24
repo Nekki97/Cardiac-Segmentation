@@ -55,8 +55,8 @@ min_val_loss = 1e-3
 
 
 #**************************** Main Parameters *****************************
-patient_percs = [1]
-levels_arr = [4]
+patient_percs = [1, 0.75, 0.5, 0.25]
+levels_arr = [3,2]
 datasets = ['pgm']
 data_augm = False
 testing = False
@@ -126,7 +126,7 @@ for whichmodel in whichmodels:
                     slice_percs = [1]
                 else:
                     if not testing:
-                        slice_percs = [0.75, 0.5, 0.25]
+                        slice_percs = [1]
                     else:
                         slice_percs = [0.25]
 
@@ -135,7 +135,7 @@ for whichmodel in whichmodels:
                     for args in data_gen_args_list:
 
                         non_gray_images = 0
-                        seed = 10
+                        seed = 0
                         while non_gray_images != amount_of_non_gray_splits: # make sure (amount_of_splits) non-gray images are saved
                             seed += 1
                             total_start_time = time.time()
