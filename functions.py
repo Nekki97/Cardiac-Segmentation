@@ -97,32 +97,41 @@ def get_patient_split(pats_amount, split):
     return train_pats, test_pats, val_pats
 
 
-def get_total_perc_pats(pats, perc):
-    amount = max(int(perc*len(pats)), 1)
-    if perc - amount / len(pats) >= 0.5 * 1 / len(pats):
-        amount += 1
-    perc_pats = random.sample(pats, amount)
+def get_total_perc_pats(pats, perc, train):
+    if train:
+        amount = max(int(perc*len(pats)), 1)
+        if perc - amount / len(pats) >= 0.5 * 1 / len(pats):
+            amount += 1
+        perc_pats = random.sample(pats, amount)
+    else:
+        perc_pats = pats
     return perc_pats
 
 
-def get_slice_perc_split(total_imgs, total_masks, pats, perc, test):
+def get_slice_perc_split(total_imgs, total_masks, pats, perc, train):
     images = []
     masks = []
 
     for patient in pats:
 
-        total_slices = len(total_imgs[patient])
-        amount = max(int(perc * total_slices), 1)
+        if train:
 
-        if perc - amount / total_slices >= 0.5 * 1 / total_slices:
-            amount += 1
+            total_slices = len(total_imgs[patient])
+            amount = max(int(perc * total_slices), 1)
 
-        indices = random.sample(range(total_slices), amount)
+            if perc - amount / total_slices >= 0.5 * 1 / total_slices:
+                amount += 1
 
-        for index in indices:
+            indices = random.sample(range(total_slices), amount)
 
-            images.append(total_imgs[patient][index])
-            masks.append(total_masks[patient][index])
+            for index in indices:
+
+                images.append(total_imgs[patient][index])
+                masks.append(total_masks[patient][index])
+
+        else:
+            images = total_imgs[patient]
+            masks = total_masks[patient]
 
     images = np.array(images, dtype=float)
     masks = np.array(masks, dtype=float)
@@ -177,30 +186,6 @@ def weighted_cross_entropy(y_true, y_pred, beta=0.7):
   return loss(y_true, y_pred)
 
 
-'''
-def collectimages(mylist):
-    data = []
-    for patient in range(len(mylist)):
-        for image in range(len(mylist[patient])):
-            data.append((mylist[patient])[image])
-    return data
-
-
-def getpatpercs(images, masks, patperc):
-    new_imgs = []
-    new_masks = []
-    for pat in range(len(images)):
-        temp_imgs = []
-        temp_masks = []
-        for index in range(int(patperc*len(images[pat]))):
-            temp_imgs.append((images[pat])[index])
-            temp_masks.append((masks[pat])[index])
-        new_imgs.append(temp_imgs)
-        new_masks.append(temp_masks)
-    return new_imgs, new_masks
-'''
-
-
 def matthews_coeff(y_true, y_pred):
     y_pred = tf.convert_to_tensor(y_pred, np.float32)
     y_true = tf.convert_to_tensor(y_true, np.float32)
@@ -229,32 +214,6 @@ def add_count(path):
         for file in fileList:
             count += 1
     return count
-
-
-
-def get_all_data(dataset, split, patient_perc, slice_perc):
-    if dataset == 'pgm':
-        (data_images, data_masks) = pgm.get_data()
-    if dataset == 'nii':
-        (images, masks) = nii.get_nii_data()
-        data_images = []
-        data_masks = []
-        for i in range(len(images)):
-            data_images.append(np.expand_dims(images[i], -1))
-        for i in range(len(masks)):
-            data_masks.append(np.expand_dims(masks[i], -1))
-
-    train_pats, test_pats, val_pats = get_patient_split(len(data_images), split)
-
-    train_pats = get_total_perc_pats(train_pats, patient_perc)
-    test_pats = get_total_perc_pats(test_pats, 1)
-    val_pats = get_total_perc_pats(val_pats, 1)
-
-    train_images, train_masks = get_slice_perc_split(data_images, data_masks, train_pats, slice_perc, False)
-    test_images, test_masks = get_slice_perc_split(data_images, data_masks, test_pats, 1, True)
-    val_images, val_masks = get_slice_perc_split(data_images, data_masks, val_pats, 1, False)
-
-    return train_images, train_masks, val_images, val_masks, test_images, test_masks
 
 
 def get_args_list(data_augm, single_param, rotation_range, width_shift_range, height_shift_range, zoom_range, horizontal_flip, vertical_flip):
